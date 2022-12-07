@@ -1,0 +1,41 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" />
+<title>Set result</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+	<h1>Set result</h1>
+	<div>
+		<form th:object="${round}" th:action="@{../saveround}" action="#"	method="post">
+			<input type="hidden" th:field="*{roundid}" class="form-control" />
+			<label for="competitor1">Competitor 1</label>
+			<select id="user1" th:field="*{user1}" class="form-control">
+       		    <option th:value="${user1.id}" th:text="${user1.username}"></option>
+    		</select>
+			<label for="competitor2">Competitor 2</label>
+			<select id="user2" th:field="*{user2}" class="form-control" >
+       		    <option th:value="${user2.id}" th:text="${user2.username}"></option>
+    		</select>
+			<div class="form-group">
+				<label for="stagelist">Stage</label>
+			 	<select id="stagelist" th:field="*{stage}" class="form-control">
+       				<option th:value="${stage.stageid}" th:text="${stage.stage}"></option>
+    			</select>
+			</div>
+			<div class="form-group">
+				<label for="result">Result</label>
+				 <select id="result" th:field="*{result}" class="form-control">
+				 	<option th:value="No" th:text="No"></option>
+	       			<option th:value="*{user1 == null ? 'No' : user1?.username} + ' win'" th:text="*{user1 == null ? 'No' : user1?.username} + ' win'"></option>
+	       			<option th:value="*{user2 == null ? 'No' : user2?.username} + ' win'" th:text="*{user2 == null ? 'No' : user2?.username} + ' win'"></option>
+	    		</select>
+			</div>			
+			<div style="clear: both; display: block; height: 10px;"></div>
+			<input type="submit" class="btn btn-primary mb-2" value="Save"></input>
+		</form>
+	</div>
+</body>
+</html>
+

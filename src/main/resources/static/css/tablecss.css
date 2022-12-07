@@ -1,0 +1,11 @@
+table {
+	display: table;
+}
+table tbody tr {
+	display: table-cell;
+}
+
+table tbody tr td {
+	display: block;
+}
+

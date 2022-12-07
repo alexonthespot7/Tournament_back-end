@@ -1,0 +1,37 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" />
+	<title>Rounds</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<div class="container">
+	<div th:object="${user}" class="col-md-4">
+		<h2 th:text="*{username} + ' rounds'"></h2>
+	</div>
+	<table class="table table-striped">
+		<tr>
+			<th>Competitor 1</th>
+			<th>Competitor 2</th>
+			<th>Stage</th>
+			<th>Result</th>
+		</tr>
+		<tr th:each="round : ${rounds1}">
+			<td th:text="${round.user1.username}"></td>
+			<td th:text="${round?.user2?.username}"></td>
+			<td th:text="${round.stage.stage}"></td>
+			<td th:text="${round.result}"></td>
+		</tr>
+		<tr th:each="round2 : ${rounds2}">
+			<td th:text="${round2?.user1?.username}"></td>
+			<td th:text="${round2.user2.username}"></td>
+			<td th:text="${round2.stage.stage}"></td>
+			<td th:text="${round2.result}"></td>
+		</tr>
+	</table>
+	<a class="btn btn-success" href="/competitors">User list</a>
+	<a href="/home" class="btn btn-primary">Main page</a>
+</div>
+</body>
+</html>

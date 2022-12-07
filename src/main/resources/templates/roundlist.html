@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity5">
+<head>
+	<link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" />
+	<title>Rounds</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+<div class="container">
+<h1>Rounds</h1>
+	<table class="table table-striped">
+		<tr>
+			<th>Competitor 1</th>
+			<th>Competitor 2</th>
+			<th>Stage</th>
+			<th>Result</th>
+			<th>Id</th>
+			<th sec:authorize="hasAuthority('ADMIN')"></th>
+		</tr>
+		<tr th:each="round : ${rounds}">
+			<td th:text="${round.user1 == null ? 'No' : round?.user1?.username}"></td>
+			<td th:text="${round.user2 == null ? 'No' : round?.user2?.username}"></td>
+			<td th:text="${round.stage.stage}"></td>
+			<td th:text="${round.result}"></td>
+			<td th:text="${round.roundid}"></td>
+			<td sec:authorize="hasAuthority('ADMIN')" th:if="${round.user1 != null and round.user2 != null and round.stage.isCurrent == true}"><a th:href="@{/setresult/{roundid}(roundid=${round.roundid})}" class="btn btn-info">Set result</a></td>
+		</tr>
+	</table>
+	<a class="btn btn-success" href="/competitors">User list</a>
+	<a sec:authorize="hasAuthority('ADMIN')" th:if="${stageStatus and rounds.size() > 0}" href="/nextstage" class="btn btn-info">Confirm current stage results</a>
+	<a  th:if="${rounds.size() > 0}" href="/bracket" class="btn btn-primary">Bracket</a>
+	<a href="/home" class="btn btn-primary">Main page</a>
+</div>
+</body>
+</html>

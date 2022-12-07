@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity5">
+<head>
+<link type="text/css" rel="stylesheet" href="/css/bootstrap.min.css"
+	th:href="@{/css/bootstrap.min.css}" />
+<title>Main Page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+	<div class="container">
+		<div class="col-md-4">
+			<h1>Main page</h1>
+			<form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
+				<input type="submit" value="Sign Out" />
+			</form>
+		</div>
+		<a sec:authorize="!isAuthenticated()" href="/login" class="btn btn-info">Login</a>
+		<a sec:authorize="!isAuthenticated()" href="/signup" class="btn btn-success">Sign up</a>
+		<div class="col-md-4">
+			<h3 sec:authorize="isAuthenticated()" th:inline="text">Welcome
+				[[${#httpServletRequest.getRemoteUser()}]]</h3>
+		</div>
+		<a sec:authorize="isAuthenticated()" href="/competitors" class="btn btn-primary">Users</a>
+		<a sec:authorize="isAuthenticated()" th:href="@{/competitors/{username}(username=${#authentication.getPrincipal().getUsername()})}" class="btn btn-primary">Personal page</a>
+	</div>
+</body>
+</html>
