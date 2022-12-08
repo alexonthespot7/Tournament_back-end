@@ -1,6 +1,7 @@
 package com.myproject.chesstournamenttest.web;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Optional;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -69,6 +70,14 @@ public class UserController {
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String editUser(@PathVariable("id") Long userId, Model model) {
 		model.addAttribute("user", repository.findById(userId));
+		Optional<User> user = repository.findById(userId);
+		user.ifPresent(userIn -> {
+			model.addAttribute("isVerified", userIn.isAccountVerified());
+		});
+		if (!user.isPresent()) {
+			model.addAttribute("isVerified", false);
+		}
+		
 		model.addAttribute("rounds", rrepository.findAll().size());
 		return "edituser";
 	}

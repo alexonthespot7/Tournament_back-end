@@ -63,23 +63,48 @@ public class ChessController {
 	public String bookList(Model model) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
-		
+
 		if (admin) {
-			model.addAttribute("users", urepository.findAll()); //if curruser is admin he/she will be able to see even unverified users
+			model.addAttribute("users", urepository.findAll()); // if curruser is admin he/she will be able to see even
+																// unverified users
 		} else {
 			model.addAttribute("users", urepository.findAllVerified());
 		}
-		
+
 		model.addAttribute("rounds", rrepository.findAll().size());
 		model.addAttribute("competitors", urepository.findAllCompetitors().size());
 
-		// Checking, if all the games in a current stage were played to allow admin to make bracket (draw)
+		// Checking, if all the games in a current stage were played to allow admin to
+		// make bracket (draw)
 		int playedRounds = rrepository.quantityOfPlayed();
 		int allCurrRounds = rrepository.findQuantityOfCurrent();
 		model.addAttribute("stageStatus",
-				playedRounds == allCurrRounds && srepository.findCurrentStage().getStage() != "No");
-
+				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
+		model.addAttribute("canMakeAll", rrepository.findAll().size() == 0
+				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()); //attribute to check whether we should display make all participants button
+		model.addAttribute("canReset",!(rrepository.findAll().size() == 0)); //attribute to check whether it is suitable to display reset button
+		
 		return "userlist";
+	}
+
+	// functionality to make all users participants
+	@RequestMapping("/makeallcompetitors")
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public String makeAllCompetitors() {
+		/**
+		 * making it possible to conduct this
+		  method only if there are no rounds
+		   and there is at least one non-competitor*/
+		if (rrepository.findAll().size() == 0
+				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()) { 
+			List<User> users = urepository.findAllVerified();
+			for (User user : users) {
+				user.setIsCompetitor(true);
+				user.setIsOut(false);
+				urepository.save(user);
+			}
+		}
+		return "redirect:competitors";
 	}
 
 	// User personal page
@@ -136,7 +161,7 @@ public class ChessController {
 	@RequestMapping(value = "/saveround", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String saveRound(Round round) {
-		
+
 		// making it possible to save rounds of current stage only;
 		if (round.getStage() == srepository.findCurrentStage()) {
 			rrepository.save(round);
@@ -200,8 +225,10 @@ public class ChessController {
 		// make bracket (draw)
 		int playedRounds = rrepository.quantityOfPlayed();
 		int allCurrRounds = rrepository.findQuantityOfCurrent();
+		model.addAttribute("isWinner",
+				srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0);
 		model.addAttribute("stageStatus",
-				playedRounds == allCurrRounds && srepository.findCurrentStage().getStage() != "No");
+				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
 		return "roundlist";
 	}
 
@@ -214,7 +241,7 @@ public class ChessController {
 
 		// sending info about winner to model to show in brackets;
 		String winner = "";
-		if (srepository.findCurrentStage().getStage() == "No" & rrepository.findAll().size() > 0) {
+		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
 			Round finalOf = rrepository.findFinal();
 
 			String result = finalOf.getResult();
@@ -235,7 +262,7 @@ public class ChessController {
 		int playedRoundshere = rrepository.quantityOfPlayed();
 		int allCurrRoundshere = rrepository.findQuantityOfCurrent();
 		boolean stageStatus = playedRoundshere == allCurrRoundshere
-				&& srepository.findCurrentStage().getStage() != "No";
+				&& !srepository.findCurrentStage().getStage().equals("No");
 		if (stageStatus && rrepository.findAll().size() > 0) {
 			int playedRounds = rrepository.quantityOfPlayed();
 			int allCurrRounds = rrepository.findQuantityOfCurrent();
@@ -258,12 +285,7 @@ public class ChessController {
 				// populating games of next stage with winners of current stage:
 				if (playedRounds > 1) {
 					List<Round> currentRounds = rrepository.findPlayedCurrentRounds();
-					// List<User> currentCompetitors = urepository.findAllCurrentCompetitors();
 					List<Round> previousRounds = rrepository.findRoundsByStage(currStageBefore.getStageid());
-
-					for (int i = 0; i < previousRounds.size(); i++) {
-						log.info("user " + i + ": " + previousRounds.get(i).getResult());
-					}
 
 					Round currRound;
 					User player1;
@@ -385,24 +407,26 @@ public class ChessController {
 	@RequestMapping("/reset")
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String resetAll() {
-		List<User> users = urepository.findAll();
-		for (User user : users) {
-			user.setStage(srepository.findByStage("No").get(0));
-			user.setIsCompetitor(false);
-			user.setIsOut(true);
-			if (!user.isAccountVerified()) {
-				urepository.delete(user);
-			} else {
-				urepository.save(user);
+		if (!(rrepository.findAll().size() == 0)) {
+			List<User> users = urepository.findAll();
+			for (User user : users) {
+				user.setStage(srepository.findByStage("No").get(0));
+				user.setIsCompetitor(false);
+				user.setIsOut(true);
+				if (!user.isAccountVerified()) {
+					urepository.delete(user);
+				} else {
+					urepository.save(user);
+				}
 			}
+
+			rrepository.deleteAll();
+
+			srepository.deleteAllStages();
+			Stage noStage = srepository.findByStage("No").get(0);
+			noStage.setIsCurrent(true);
+			srepository.save(noStage);
 		}
-
-		rrepository.deleteAll();
-
-		srepository.deleteAllStages();
-		Stage noStage = srepository.findByStage("No").get(0);
-		noStage.setIsCurrent(true);
-		srepository.save(noStage);
 
 		return "redirect:competitors";
 	}

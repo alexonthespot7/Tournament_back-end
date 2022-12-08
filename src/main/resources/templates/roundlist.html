@@ -14,15 +14,13 @@
 			<th>Competitor 2</th>
 			<th>Stage</th>
 			<th>Result</th>
-			<th>Id</th>
-			<th sec:authorize="hasAuthority('ADMIN')"></th>
+			<th th:if="${!isWinner}" sec:authorize="hasAuthority('ADMIN')"></th>
 		</tr>
 		<tr th:each="round : ${rounds}">
 			<td th:text="${round.user1 == null ? 'No' : round?.user1?.username}"></td>
 			<td th:text="${round.user2 == null ? 'No' : round?.user2?.username}"></td>
 			<td th:text="${round.stage.stage}"></td>
 			<td th:text="${round.result}"></td>
-			<td th:text="${round.roundid}"></td>
 			<td sec:authorize="hasAuthority('ADMIN')" th:if="${round.user1 != null and round.user2 != null and round.stage.isCurrent == true}"><a th:href="@{/setresult/{roundid}(roundid=${round.roundid})}" class="btn btn-info">Set result</a></td>
 		</tr>
 	</table>
