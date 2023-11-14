@@ -1,36 +1,21 @@
-package com.myproject.chesstournamenttest.model;
+package com.myproject.chesstournamenttest.forms;
 
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.Pattern;
-import javax.validation.constraints.Size;
 
 public class UserFormAdmin {	
-	@NotEmpty
 	private String firstname = "";
 	
-	@NotEmpty
 	private String lastname = "";
 	
 	private boolean isCompetitor = false;
-	
-    @NotEmpty
-    @Pattern(regexp = "\\S{5,30}")
-    private String username = "";
 
-    @NotEmpty
-    @Size(min=4, max=30)
+	private String username = "";
+
     private String password = "";
 
-    @NotEmpty
-    @Size(min=4, max=30)
     private String passwordCheck = "";
 
-    @NotEmpty
     private String role = "USER";
     
-    @NotEmpty
-    @Email
     private String email = "";
     
     public String getFirstname() {

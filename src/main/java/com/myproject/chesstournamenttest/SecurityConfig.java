@@ -9,14 +9,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-
-import com.myproject.chesstournamenttest.web.UserDetailServiceImpl;
+import com.myproject.chesstournamenttest.service.UserDetailServiceImpl;
 
 
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity
-public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Autowired
 	private UserDetailServiceImpl userDetailsService;
 

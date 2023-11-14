@@ -29,8 +29,8 @@ import com.myproject.chesstournamenttest.model.User;
 import com.myproject.chesstournamenttest.model.UserRepository;
 
 @Controller
-public class ChessController {
-	private static final Logger log = LoggerFactory.getLogger(ChessController.class);
+public class MainController {
+	private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
 	@Autowired
 	private UserRepository urepository;

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.myproject.chesstournamenttest.web.ChessController;
+import com.myproject.chesstournamenttest.web.MainController;
 import com.myproject.chesstournamenttest.web.UserController;
 
 
@@ -15,7 +15,7 @@ import com.myproject.chesstournamenttest.web.UserController;
 class ChesstournamenttestApplicationTests {
 
 	@Autowired
-	private ChessController chessController;
+	private MainController chessController;
 	
 	@Autowired
 	private UserController userController;

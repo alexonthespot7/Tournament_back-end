@@ -1,11 +1,6 @@
-package com.myproject.chesstournamenttest.model;
-
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotEmpty;
+package com.myproject.chesstournamenttest.forms;
 
 public class EmailForm {
-	@NotEmpty
-    @Email
     private String email = "";
 	
 	public String getEmail() {

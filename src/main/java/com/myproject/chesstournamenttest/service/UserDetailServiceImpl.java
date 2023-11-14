@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest.web;
+package com.myproject.chesstournamenttest.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.AuthorityUtils;

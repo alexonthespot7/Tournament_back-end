@@ -6,7 +6,6 @@ import java.util.Optional;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.query.Param;
@@ -24,13 +23,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import com.myproject.chesstournamenttest.model.ChangePasswordForm;
-import com.myproject.chesstournamenttest.model.EmailForm;
+import com.myproject.chesstournamenttest.forms.ChangePasswordForm;
+import com.myproject.chesstournamenttest.forms.EmailForm;
+import com.myproject.chesstournamenttest.forms.SignupForm;
+import com.myproject.chesstournamenttest.forms.UserFormAdmin;
 import com.myproject.chesstournamenttest.model.RoundRepository;
-import com.myproject.chesstournamenttest.model.SignupForm;
 import com.myproject.chesstournamenttest.model.StageRepository;
 import com.myproject.chesstournamenttest.model.User;
-import com.myproject.chesstournamenttest.model.UserFormAdmin;
 import com.myproject.chesstournamenttest.model.UserRepository;
 
 import net.bytebuddy.utility.RandomString;
@@ -110,7 +109,7 @@ public class UserController {
 	
 	//Reset password functionality
 	@RequestMapping(value = "resetpassword", method = RequestMethod.POST)
-    public String changePassword(@Valid @ModelAttribute("emailform") EmailForm emailForm, BindingResult bindingResult) throws UnsupportedEncodingException, MessagingException {
+    public String changePassword(@ModelAttribute("emailform") EmailForm emailForm, BindingResult bindingResult) throws UnsupportedEncodingException, MessagingException {
     	if (!bindingResult.hasErrors()) {
     		if (repository.findByEmail(emailForm.getEmail()) != null) {
     			User curruser = repository.findByEmail(emailForm.getEmail());
@@ -140,7 +139,7 @@ public class UserController {
 	// saving user after changing password by authenticated user
 	@RequestMapping(value = "savepassword", method = RequestMethod.POST)
 	@PreAuthorize("authentication.getPrincipal().getUsername() == #form.getUsername()")
-	public String savePassword(@Valid @ModelAttribute("form") ChangePasswordForm form, BindingResult bindingResult) {
+	public String savePassword( @ModelAttribute("form") ChangePasswordForm form, BindingResult bindingResult) {
 		if (!bindingResult.hasErrors()) { // validation errors
 			User curruser = repository.findByUsername(form.getUsername());
 			BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
@@ -175,7 +174,7 @@ public class UserController {
 	 * @return
 	 */
 	@RequestMapping(value = "saveuser", method = RequestMethod.POST)
-	public String save(@Valid @ModelAttribute("signupform") SignupForm signupForm, BindingResult bindingResult,
+	public String save( @ModelAttribute("signupform") SignupForm signupForm, BindingResult bindingResult,
 			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
 		if (!bindingResult.hasErrors()) { // validation errors
 			if (signupForm.getPassword().equals(signupForm.getPasswordCheck())) { // check password match
@@ -239,7 +238,7 @@ public class UserController {
 	// save user functionality for admin
 	@RequestMapping(value = "admin/saveuser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String saveAdminUser(@Valid @ModelAttribute("form") UserFormAdmin formUserAdmin, BindingResult bindingResult,
+	public String saveAdminUser( @ModelAttribute("form") UserFormAdmin formUserAdmin, BindingResult bindingResult,
 			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
 		if (!bindingResult.hasErrors()) { // validation errors
 			if (formUserAdmin.getPassword().equals(formUserAdmin.getPasswordCheck())) { // check password match
@@ -287,7 +286,7 @@ public class UserController {
 	// edit user functionality for user
 	@RequestMapping(value = "/edituser", method = RequestMethod.POST)
 	@PreAuthorize("isAuthenticated()")
-	public String editUser(@Valid @ModelAttribute("form") User user, BindingResult bindingResult) {
+	public String editUser( @ModelAttribute("form") User user, BindingResult bindingResult) {
 		if (!bindingResult.hasErrors()) { // validation errors
 			user.setIsOut(!user.getIsCompetitor());
 			repository.save(user);
@@ -303,7 +302,7 @@ public class UserController {
 	// edit user functionality for admin
 	@RequestMapping(value = "admin/edituser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String editAdminUser(@Valid @ModelAttribute("form") User user, BindingResult bindingResult) {
+	public String editAdminUser( @ModelAttribute("form") User user, BindingResult bindingResult) {
 		if (!bindingResult.hasErrors()) { // validation errors
 			user.setIsOut(!user.getIsCompetitor());
 			repository.save(user);
