@@ -40,7 +40,13 @@ class RepositoryTests {
 	
 	//Test find by username and by email
 	@Test
-	public void testUserByUsername() {
+	public void testUserByUsernameAndEmail() {
+		User user0 = urepository.findByUsername("usero");
+		assertThat(user0).isNull();
+		
+		User user00 = urepository.findByEmail("mymailss@gmail.com");
+		assertThat(user00).isNull();
+
 		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true);
 		urepository.save(userCr1);
 
