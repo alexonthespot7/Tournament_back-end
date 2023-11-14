@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.myproject.tournamentapp.MyUser;
+import com.myproject.tournamentapp.forms.CompetitorInfo;
+import com.myproject.tournamentapp.forms.PersonalInfo;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
@@ -41,70 +44,53 @@ public class MainController {
 	@Autowired
 	private RoundRepository rrepository;
 
-	@RequestMapping(value = { "/", "/home" })
-	public String greeting(Model model) {
-		String currUserName = "";
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (!(authentication instanceof AnonymousAuthenticationToken)) {
-			currUserName = authentication.getName();
-		}
-		model.addAttribute("curruser", urepository.findByUsername(currUserName));
-		return "mainpage";
-	}
-
-	@RequestMapping(value = "/login")
-	public String login() {
-		return "login";
-	}
-
-	// Show all users
-	@RequestMapping("/competitors")
+	// Method to send the quantity of the rounds to the main page to conditionally
+	// render buttons
+	@RequestMapping(value = "/roundsquantity", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
-	public String bookList(Model model) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
+	public @ResponseBody String getRoundsQuantity() {
+		int roundQuantity = rrepository.findAll().size();
 
-		if (admin) {
-			model.addAttribute("users", urepository.findAll()); // if curruser is admin he/she will be able to see even
-																// unverified users
-		} else {
-			model.addAttribute("users", urepository.findAllVerified());
-		}
-
-		model.addAttribute("rounds", rrepository.findAll().size());
-		model.addAttribute("competitors", urepository.findAllCompetitors().size());
-
-		// Checking, if all the games in a current stage were played to allow admin to
-		// make bracket (draw)
-		int playedRounds = rrepository.quantityOfPlayed();
-		int allCurrRounds = rrepository.findQuantityOfCurrent();
-		model.addAttribute("stageStatus",
-				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
-		model.addAttribute("canMakeAll", rrepository.findAll().size() == 0
-				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()); //attribute to check whether we should display make all participants button
-		model.addAttribute("canReset",!(rrepository.findAll().size() == 0)); //attribute to check whether it is suitable to display reset button
-		
-		return "userlist";
+		return String.valueOf(roundQuantity);
 	}
 
-	// functionality to make all users participants
-	@RequestMapping("/makeallcompetitors")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String makeAllCompetitors() {
-		/**
-		 * making it possible to conduct this
-		  method only if there are no rounds
-		   and there is at least one non-competitor*/
-		if (rrepository.findAll().size() == 0
-				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()) { 
-			List<User> users = urepository.findAllVerified();
-			for (User user : users) {
-				user.setIsCompetitor(true);
-				user.setIsOut(false);
-				urepository.save(user);
-			}
+	// method to display competitors on competitors page for authorized user
+	@RequestMapping(value = "/competitors", method = RequestMethod.GET)
+	@PreAuthorize("isAuthenticated()")
+	public @ResponseBody List<CompetitorInfo> listCompetitorsPublicInfo() {
+		List<CompetitorInfo> allCompetitors = new ArrayList<>();
+		CompetitorInfo competitor;
+
+		List<User> allUsers = urepository.findAll();
+		for (User user : allUsers) {
+			if (user.getIsCompetitor())
 		}
-		return "redirect:competitors";
+
+		return allCompetitors;
+	}
+
+	// method to display user's personal info on the user page
+	@RequestMapping("/competitors/{userid}")
+	@PreAuthorize("isAuthenticated()")
+	public @ResponseBody getPersonalInfoById(@PathVariable("userid") Long userId, Authentication auth) {
+		
+		//double check authentication
+		if (auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser")) {
+			MyUser myUserInstance = (MyUser) auth.getPrincipal();
+			User user = urepository.findByUsername(myUserInstance.getUsername());
+			if (user != null && user.getId() == userId) {
+				List<Round> allRounds = user.getRounds1();
+				allRounds.addAll(user.getRounds2());
+				
+				PersonalInfo personalInfoInstance = new PersonalInfo(user.getFirstname(), user.getLastname(), user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(), allRounds);
+				
+				return personalInfoInstance;
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
 	}
 
 	// User personal page
@@ -118,6 +104,88 @@ public class MainController {
 		model.addAttribute("rounds", rrepository.findAll().size());
 
 		return "personalpage";
+	}
+
+	// User's rounds:
+	@RequestMapping("/userrounds/{id}")
+	@PreAuthorize("isAuthenticated()")
+	public String showRounds(@PathVariable("id") Long userId, Model model) {
+		Optional<User> user = urepository.findById(userId);
+		user.ifPresent(userIn -> {
+			model.addAttribute("rounds1", userIn.getRounds1());
+			model.addAttribute("rounds2", userIn.getRounds2());
+			model.addAttribute("user", userIn);
+		});
+		if (!user.isPresent()) {
+			model.addAttribute("rounds1", null);
+			model.addAttribute("rounds2", null);
+			model.addAttribute("user", null);
+		}
+		return "userrounds";
+	}
+
+	// Show all rounds
+	@RequestMapping("/rounds")
+	@PreAuthorize("isAuthenticated()")
+	public String roundList(Model model) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
+		if (admin) {
+			model.addAttribute("rounds", rrepository.findAll());
+		} else {
+			model.addAttribute("rounds", rrepository.findAllCurrentAndPlayed());
+		}
+		// Checking, if all the games in a current stage were played to allow admin to
+		// make bracket (draw)
+		int playedRounds = rrepository.quantityOfPlayed();
+		int allCurrRounds = rrepository.findQuantityOfCurrent();
+		model.addAttribute("isWinner",
+				srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0);
+		model.addAttribute("stageStatus",
+				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
+		return "roundlist";
+	}
+
+	// Play off bracket page
+	@RequestMapping("/bracket")
+	@PreAuthorize("isAuthenticated()")
+	public String bracketPage(Model model) {
+		model.addAttribute("stages", srepository.findAllStages());
+		model.addAttribute("rounds", rrepository.findAll());
+
+		// sending info about winner to model to show in brackets;
+		String winner = "";
+		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
+			Round finalOf = rrepository.findFinal();
+
+			String result = finalOf.getResult();
+			if (result.indexOf(" ") != -1) {
+				winner = result.substring(0, result.indexOf(" "));
+			}
+		}
+		model.addAttribute("winner", winner);
+
+		return "bracket";
+	}
+
+	// functionality to make all users participants (admin)
+	@RequestMapping("/makeallcompetitors")
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public String makeAllCompetitors() {
+		/**
+		 * making it possible to conduct this method only if there are no rounds and
+		 * there is at least one non-competitor
+		 */
+		if (rrepository.findAll().size() == 0
+				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()) {
+			List<User> users = urepository.findAllVerified();
+			for (User user : users) {
+				user.setIsCompetitor(true);
+				user.setIsOut(false);
+				urepository.save(user);
+			}
+		}
+		return "redirect:competitors";
 	}
 
 	// Delete user (admin)
@@ -184,74 +252,12 @@ public class MainController {
 		return "redirect:rounds";
 	}
 
-	// User's rounds:
-	@RequestMapping("/userrounds/{id}")
-	@PreAuthorize("isAuthenticated()")
-	public String showRounds(@PathVariable("id") Long userId, Model model) {
-		Optional<User> user = urepository.findById(userId);
-		user.ifPresent(userIn -> {
-			model.addAttribute("rounds1", userIn.getRounds1());
-			model.addAttribute("rounds2", userIn.getRounds2());
-			model.addAttribute("user", userIn);
-		});
-		if (!user.isPresent()) {
-			model.addAttribute("rounds1", null);
-			model.addAttribute("rounds2", null);
-			model.addAttribute("user", null);
-		}
-		return "userrounds";
-	}
-
 	// Show all stages (admin)
 	@RequestMapping("/stages")
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String stageList(Model model) {
 		model.addAttribute("stages", srepository.findAll());
 		return "stagelist";
-	}
-
-	// Show all rounds
-	@RequestMapping("/rounds")
-	@PreAuthorize("isAuthenticated()")
-	public String roundList(Model model) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
-		if (admin) {
-			model.addAttribute("rounds", rrepository.findAll());
-		} else {
-			model.addAttribute("rounds", rrepository.findAllCurrentAndPlayed());
-		}
-		// Checking, if all the games in a current stage were played to allow admin to
-		// make bracket (draw)
-		int playedRounds = rrepository.quantityOfPlayed();
-		int allCurrRounds = rrepository.findQuantityOfCurrent();
-		model.addAttribute("isWinner",
-				srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0);
-		model.addAttribute("stageStatus",
-				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
-		return "roundlist";
-	}
-
-	// Play off bracket page
-	@RequestMapping("/bracket")
-	@PreAuthorize("isAuthenticated()")
-	public String bracketPage(Model model) {
-		model.addAttribute("stages", srepository.findAllStages());
-		model.addAttribute("rounds", rrepository.findAll());
-
-		// sending info about winner to model to show in brackets;
-		String winner = "";
-		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
-			Round finalOf = rrepository.findFinal();
-
-			String result = finalOf.getResult();
-			if (result.indexOf(" ") != -1) {
-				winner = result.substring(0, result.indexOf(" "));
-			}
-		}
-		model.addAttribute("winner", winner);
-
-		return "bracket";
 	}
 
 	// Confirm current stage results (ADMIN)
@@ -403,6 +409,7 @@ public class MainController {
 	}
 
 	// Reset functionality: all users become non-participants and rounds are cleared
+	// (admin)
 	@Transactional
 	@RequestMapping("/reset")
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -431,27 +438,39 @@ public class MainController {
 		return "redirect:competitors";
 	}
 
-	// REST service to show all users (admin)
+	// Show all users
 	@RequestMapping("/users")
-	public @ResponseBody List<User> userListRest() {
-		return (List<User>) urepository.findAllVerified();
-	}
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public String bookList(Model model) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
 
-	// REST service to show user by id (admin)
-	@RequestMapping("/users/{id}")
-	public @ResponseBody Optional<User> findUserRest(@PathVariable("id") Long userId) {
-		return urepository.findById(userId);
-	}
+		if (admin) {
+			model.addAttribute("users", urepository.findAll()); // if curruser is admin he/she will be able to see even
+																// unverified users
+		} else {
+			model.addAttribute("users", urepository.findAllVerified());
+		}
 
-	// REST service to show all rounds
-	@RequestMapping("/roundsrest")
-	public @ResponseBody List<Round> roundListRest() {
-		return (List<Round>) rrepository.findAll();
-	}
+		model.addAttribute("rounds", rrepository.findAll().size());
+		model.addAttribute("competitors", urepository.findAllCompetitors().size());
 
-	// REST service to show round by id
-	@RequestMapping("/roundsrest/{id}")
-	public @ResponseBody Optional<Round> findRoundRest(@PathVariable("id") Long roundId) {
-		return rrepository.findById(roundId);
+		// Checking, if all the games in a current stage were played to allow admin to
+		// make bracket (draw)
+		int playedRounds = rrepository.quantityOfPlayed();
+		int allCurrRounds = rrepository.findQuantityOfCurrent();
+		model.addAttribute("stageStatus",
+				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
+		model.addAttribute("canMakeAll", rrepository.findAll().size() == 0
+				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()); // attribute to
+																									// check whether we
+																									// should display
+																									// make all
+																									// participants
+																									// button
+		model.addAttribute("canReset", !(rrepository.findAll().size() == 0)); // attribute to check whether it is
+																				// suitable to display reset button
+
+		return "userlist";
 	}
 }
