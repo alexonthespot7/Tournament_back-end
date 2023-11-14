@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest.web;
+package com.myproject.tournamentapp.web;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Optional;
@@ -23,14 +23,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import com.myproject.chesstournamenttest.forms.ChangePasswordForm;
-import com.myproject.chesstournamenttest.forms.EmailForm;
-import com.myproject.chesstournamenttest.forms.SignupForm;
-import com.myproject.chesstournamenttest.forms.UserFormAdmin;
-import com.myproject.chesstournamenttest.model.RoundRepository;
-import com.myproject.chesstournamenttest.model.StageRepository;
-import com.myproject.chesstournamenttest.model.User;
-import com.myproject.chesstournamenttest.model.UserRepository;
+import com.myproject.tournamentapp.forms.ChangePasswordForm;
+import com.myproject.tournamentapp.forms.EmailForm;
+import com.myproject.tournamentapp.forms.SignupForm;
+import com.myproject.tournamentapp.forms.UserFormAdmin;
+import com.myproject.tournamentapp.model.RoundRepository;
+import com.myproject.tournamentapp.model.StageRepository;
+import com.myproject.tournamentapp.model.User;
+import com.myproject.tournamentapp.model.UserRepository;
 
 import net.bytebuddy.utility.RandomString;
 

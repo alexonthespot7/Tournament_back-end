@@ -1,8 +1,7 @@
-package com.myproject.chesstournamenttest;
+package com.myproject.tournamentapp;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Optional;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -18,9 +17,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.myproject.chesstournamenttest.model.User;
-import com.myproject.chesstournamenttest.model.UserRepository;
-import com.myproject.chesstournamenttest.service.AuthenticationService;
+import com.myproject.tournamentapp.model.User;
+import com.myproject.tournamentapp.model.UserRepository;
+import com.myproject.tournamentapp.service.AuthenticationService;
 
 
 @Component
@@ -39,14 +38,13 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 		if (jws != null) {
 			String username = jwtService.getAuthUser(request);
 			
-			Optional<User> optUser = urepository.findByUsername(username);
+			User user = urepository.findByUsername(username);
 			
 			Authentication authentication;
 			
-			if (optUser.isPresent()) {
-				User user = optUser.get();
+			if (user != null) {
 				boolean enabled = user.isAccountVerified();
-				MyUser myUser = new MyUser(user.getId(), username, user.getPassword(),
+				MyUser myUser = new MyUser(user.getId(), username, user.getPasswordHash(),
 						enabled, true, true, true, AuthorityUtils.createAuthorityList(user.getRole()));
 				authentication = new UsernamePasswordAuthenticationToken(myUser, null, AuthorityUtils.createAuthorityList(user.getRole()));
 			} else {

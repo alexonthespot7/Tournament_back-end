@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest;
+package com.myproject.tournamentapp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,14 +9,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import java.sql.Date;
 
-import com.myproject.chesstournamenttest.model.Round;
-import com.myproject.chesstournamenttest.model.RoundRepository;
-import com.myproject.chesstournamenttest.model.Stage;
-import com.myproject.chesstournamenttest.model.StageRepository;
-import com.myproject.chesstournamenttest.model.User;
-import com.myproject.chesstournamenttest.model.UserRepository;
+import com.myproject.tournamentapp.model.Round;
+import com.myproject.tournamentapp.model.RoundRepository;
+import com.myproject.tournamentapp.model.Stage;
+import com.myproject.tournamentapp.model.StageRepository;
+import com.myproject.tournamentapp.model.User;
+import com.myproject.tournamentapp.model.UserRepository;
+
+import java.sql.Date;
 
 @ExtendWith(SpringExtension.class)
 @DataJpaTest

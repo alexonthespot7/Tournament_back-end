@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest.web;
+package com.myproject.tournamentapp.web;
 
 import java.sql.Date;
 import java.util.ArrayList;
@@ -14,21 +14,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.myproject.chesstournamenttest.model.Round;
-import com.myproject.chesstournamenttest.model.RoundRepository;
-import com.myproject.chesstournamenttest.model.Stage;
-import com.myproject.chesstournamenttest.model.StageRepository;
-import com.myproject.chesstournamenttest.model.User;
-import com.myproject.chesstournamenttest.model.UserRepository;
+import com.myproject.tournamentapp.model.Round;
+import com.myproject.tournamentapp.model.RoundRepository;
+import com.myproject.tournamentapp.model.Stage;
+import com.myproject.tournamentapp.model.StageRepository;
+import com.myproject.tournamentapp.model.User;
+import com.myproject.tournamentapp.model.UserRepository;
 
-@Controller
+@RestController
 public class MainController {
 	private static final Logger log = LoggerFactory.getLogger(MainController.class);
 

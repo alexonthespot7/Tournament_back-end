@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest;
+package com.myproject.tournamentapp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -6,13 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.myproject.chesstournamenttest.web.MainController;
-import com.myproject.chesstournamenttest.web.UserController;
+import com.myproject.tournamentapp.web.MainController;
+import com.myproject.tournamentapp.web.UserController;
 
 
 //smoke testing of Chess application controller and User controller
 @SpringBootTest
-class ChesstournamenttestApplicationTests {
+class TournamentApplicationTests {
 
 	@Autowired
 	private MainController chessController;

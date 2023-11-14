@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest.model;
+package com.myproject.tournamentapp.model;
 
 import java.sql.Date;
 import java.util.List;

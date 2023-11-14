@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest;
+package com.myproject.tournamentapp;
 
 import java.sql.Date;
 
@@ -7,16 +7,16 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import com.myproject.chesstournamenttest.model.Stage;
-import com.myproject.chesstournamenttest.model.StageRepository;
-import com.myproject.chesstournamenttest.model.User;
-import com.myproject.chesstournamenttest.model.UserRepository;
+import com.myproject.tournamentapp.model.Stage;
+import com.myproject.tournamentapp.model.StageRepository;
+import com.myproject.tournamentapp.model.User;
+import com.myproject.tournamentapp.model.UserRepository;
 
 @SpringBootApplication
-public class ChesstournamenttestApplication {
+public class TournamentApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ChesstournamenttestApplication.class, args);
+		SpringApplication.run(TournamentApplication.class, args);
 	}
 	
 	@Bean

@@ -1,14 +1,13 @@
-package com.myproject.chesstournamenttest.forms;
+package com.myproject.tournamentapp.forms;
 
-
-public class UserFormAdmin {	
+public class SignupForm {
 	private String firstname = "";
 	
 	private String lastname = "";
 	
 	private boolean isCompetitor = false;
 
-	private String username = "";
+    private String username = "";
 
     private String password = "";
 

@@ -8,9 +8,9 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.myproject</groupId>
-	<artifactId>chesstournamenttest</artifactId>
+	<artifactId>tournamentapp</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>chesstournamenttest</name>
+	<name>tournamentapp</name>
 	<description>Back-end side for the tournament app project</description>
 	<dependencies>
 		<dependency>

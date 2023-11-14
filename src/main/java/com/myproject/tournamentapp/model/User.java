@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest.model;
+package com.myproject.tournamentapp.model;
 
 import java.util.List;
 

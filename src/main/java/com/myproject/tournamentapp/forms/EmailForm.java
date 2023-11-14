@@ -1,4 +1,4 @@
-package com.myproject.chesstournamenttest.forms;
+package com.myproject.tournamentapp.forms;
 
 public class EmailForm {
     private String email = "";
