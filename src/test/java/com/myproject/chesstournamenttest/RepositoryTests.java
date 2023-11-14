@@ -41,9 +41,16 @@ class RepositoryTests {
 	//Test find by username and by email
 	@Test
 	public void testUserByUsername() {
+		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true);
+		urepository.save(userCr1);
+
 		User user = urepository.findByUsername("usero");
 		assertThat(user).isNotNull();
 		assertThat(user.getRole()).isEqualTo("USER");
+		
+		User userCr2 = new User("Me", "user", "usersdso", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "ADMIN", true, false, srepository.findByStage("No").get(0), "mymailss@gmail.com", true);
+		urepository.save(userCr2);
+
 		
 		User user2 = urepository.findByEmail("mymailss@gmail.com");
 		assertThat(user2).isNotNull();
@@ -72,6 +79,9 @@ class RepositoryTests {
 	//Test deletion for user repo
 	@Test
 	public void deleteUserTest() {
+		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true);
+		urepository.save(userCr1);
+		
 		User user = urepository.findByUsername("usero");
 		urepository.delete(user);
 		assertThat(urepository.findByUsername("usero")).isNull();
@@ -106,6 +116,16 @@ class RepositoryTests {
 	public void testSearchStage() {
 		List<Stage> stages = srepository.findByStage("No");
 		assertThat(stages).hasSize(1);
+	}
+	
+	//check round repository findAll function
+	@Test
+	public void testFindAllRounds() {
+		List<Round> allRounds = rrepository.findAll();
+		assertThat(allRounds).hasSize(0);
+		rrepository.save(new Round("No", srepository.findByStage("No").get(0)));
+		allRounds = rrepository.findAll();
+		assertThat(allRounds).hasSize(1);
 	}
 	
 	//Test delete and creation functions for round repo:
