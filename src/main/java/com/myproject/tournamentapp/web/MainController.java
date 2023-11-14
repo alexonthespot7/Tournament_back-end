@@ -22,8 +22,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.myproject.tournamentapp.MyUser;
-import com.myproject.tournamentapp.forms.CompetitorInfo;
+import com.myproject.tournamentapp.forms.BracketPageInfo;
+import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
 import com.myproject.tournamentapp.forms.PersonalInfo;
+import com.myproject.tournamentapp.forms.RoundPublicInfo;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
@@ -57,13 +59,16 @@ public class MainController {
 	// method to display competitors on competitors page for authorized user
 	@RequestMapping(value = "/competitors", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody List<CompetitorInfo> listCompetitorsPublicInfo() {
-		List<CompetitorInfo> allCompetitors = new ArrayList<>();
-		CompetitorInfo competitor;
+	public @ResponseBody List<CompetitorPublicInfo> listCompetitorsPublicInfo() {
+		List<CompetitorPublicInfo> allCompetitors = new ArrayList<>();
+		CompetitorPublicInfo competitor;
 
 		List<User> allUsers = urepository.findAll();
 		for (User user : allUsers) {
-			if (user.getIsCompetitor())
+			if (user.getIsCompetitor()) {
+				competitor = new CompetitorPublicInfo(user.getUsername(), user.getIsOut(), user.getStage().getStage());
+				allCompetitors.add(competitor);
+			}
 		}
 
 		return allCompetitors;
@@ -72,7 +77,7 @@ public class MainController {
 	// method to display user's personal info on the user page
 	@RequestMapping("/competitors/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody getPersonalInfoById(@PathVariable("userid") Long userId, Authentication auth) {
+	public @ResponseBody PersonalInfo getPersonalInfoById(@PathVariable("userid") Long userId, Authentication auth) {
 		
 		//double check authentication
 		if (auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser")) {
@@ -92,69 +97,43 @@ public class MainController {
 			return null;
 		}
 	}
-
-	// User personal page
-	@RequestMapping("/competitors/{username}")
-	@PreAuthorize("authentication.getPrincipal().getUsername() == #username")
-	public String userPage(@PathVariable("username") String username, Model model) {
-		User user = urepository.findByUsername(username);
-		model.addAttribute("rounds1", user.getRounds1());
-		model.addAttribute("rounds2", user.getRounds2());
-		model.addAttribute("curruser", user);
-		model.addAttribute("rounds", rrepository.findAll().size());
-
-		return "personalpage";
-	}
-
-	// User's rounds:
-	@RequestMapping("/userrounds/{id}")
+	
+	//Method to display all rounds on the rounds page
+	@RequestMapping(value = "/rounds", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
-	public String showRounds(@PathVariable("id") Long userId, Model model) {
-		Optional<User> user = urepository.findById(userId);
-		user.ifPresent(userIn -> {
-			model.addAttribute("rounds1", userIn.getRounds1());
-			model.addAttribute("rounds2", userIn.getRounds2());
-			model.addAttribute("user", userIn);
-		});
-		if (!user.isPresent()) {
-			model.addAttribute("rounds1", null);
-			model.addAttribute("rounds2", null);
-			model.addAttribute("user", null);
+	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
+		List<Round> allRounds = rrepository.findAll();
+		if (allRounds.isEmpty()) return null; //return null if the bracket wasn't made yet
+		
+		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
+		RoundPublicInfo publicRound;
+		
+		for (Round round : allRounds) {
+			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(), round.getStage().getStage(), round.getResult());
+			allPublicRounds.add(publicRound);
 		}
-		return "userrounds";
+		
+		return allPublicRounds;
 	}
-
-	// Show all rounds
-	@RequestMapping("/rounds")
+	
+	//method to send stages and rounds public info and winner (if exists) for the bracket page
+	@RequestMapping(value = "/bracket", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
-	public String roundList(Model model) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
-		if (admin) {
-			model.addAttribute("rounds", rrepository.findAll());
-		} else {
-			model.addAttribute("rounds", rrepository.findAllCurrentAndPlayed());
+	public @ResponseBody BracketPageInfo getBracketInfo() {
+		List<Round> allRounds = rrepository.findAll();
+		if (allRounds.isEmpty()) return null; //return null if the bracket wasn't made yet
+		
+		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
+		RoundPublicInfo publicRound;
+		for (Round round : allRounds) {
+			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(), round.getStage().getStage(), round.getResult());
+			allPublicRounds.add(publicRound);
 		}
-		// Checking, if all the games in a current stage were played to allow admin to
-		// make bracket (draw)
-		int playedRounds = rrepository.quantityOfPlayed();
-		int allCurrRounds = rrepository.findQuantityOfCurrent();
-		model.addAttribute("isWinner",
-				srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0);
-		model.addAttribute("stageStatus",
-				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
-		return "roundlist";
-	}
-
-	// Play off bracket page
-	@RequestMapping("/bracket")
-	@PreAuthorize("isAuthenticated()")
-	public String bracketPage(Model model) {
-		model.addAttribute("stages", srepository.findAllStages());
-		model.addAttribute("rounds", rrepository.findAll());
-
-		// sending info about winner to model to show in brackets;
+		
+		List<Stage> allStages = srepository.findAllStages();
+		
 		String winner = "";
+		
 		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
 			Round finalOf = rrepository.findFinal();
 
@@ -163,9 +142,10 @@ public class MainController {
 				winner = result.substring(0, result.indexOf(" "));
 			}
 		}
-		model.addAttribute("winner", winner);
-
-		return "bracket";
+		
+		BracketPageInfo bracketInfo = new BracketPageInfo(allStages, allPublicRounds, winner);
+		
+		return bracketInfo;
 	}
 
 	// functionality to make all users participants (admin)

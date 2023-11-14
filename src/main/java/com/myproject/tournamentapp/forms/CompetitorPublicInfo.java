@@ -1,11 +1,11 @@
 package com.myproject.tournamentapp.forms;
 
-public class CompetitorInfo {
+public class CompetitorPublicInfo {
 	private String username;
 	private boolean isOut;
 	private String stage;
 	
-	public CompetitorInfo(String username, boolean isOut, String stage) {
+	public CompetitorPublicInfo(String username, boolean isOut, String stage) {
 		this.username = username;
 		this.isOut = isOut;
 		this.stage = stage;
