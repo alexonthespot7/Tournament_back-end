@@ -2,21 +2,21 @@ package com.myproject.tournamentapp.forms;
 
 
 public class UserFormAdmin {	
-	private String firstname = "";
+	private String firstname;
 	
-	private String lastname = "";
+	private String lastname;
 	
-	private boolean isCompetitor = false;
+	private boolean isCompetitor;
 
-	private String username = "";
+	private String username;
 
-    private String password = "";
+    private String password;
 
-    private String passwordCheck = "";
+    private String passwordCheck;
 
-    private String role = "USER";
+    private String role;
     
-    private String email = "";
+    private String email;
     
     public String getFirstname() {
 		return firstname;

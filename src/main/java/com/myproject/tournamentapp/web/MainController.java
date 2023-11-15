@@ -31,6 +31,7 @@ import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
 import com.myproject.tournamentapp.forms.PersonalInfo;
 import com.myproject.tournamentapp.forms.RoundPublicInfo;
+import com.myproject.tournamentapp.forms.UsersPageAdminForm;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
@@ -120,8 +121,9 @@ public class MainController {
 		user.setFirstname(personalInfo.getFirstname());
 		user.setLastname(personalInfo.getLastname());
 		user.setUsername(personalInfo.getUsername());
-		
-		if (!(rrepository.findAll().size() > 0)) user.setIsCompetitor(personalInfo.isCompetitor());
+
+		if (!(rrepository.findAll().size() > 0))
+			user.setIsCompetitor(personalInfo.isCompetitor());
 
 		urepository.save(user);
 
@@ -138,15 +140,15 @@ public class MainController {
 
 		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
 		RoundPublicInfo publicRound;
-		//In round entity one of the competitor can be null, so I need to handle it as well
+		// In round entity one of the competitor can be null, so I need to handle it as
+		// well
 		String username1;
 		String username2;
 
 		for (Round round : allRounds) {
 			username1 = round.getUser1() == null ? null : round.getUser1().getUsername();
 			username2 = round.getUser2() == null ? null : round.getUser2().getUsername();
-			publicRound = new RoundPublicInfo(username1, username2,
-					round.getStage().getStage(), round.getResult());
+			publicRound = new RoundPublicInfo(username1, username2, round.getStage().getStage(), round.getResult());
 			allPublicRounds.add(publicRound);
 		}
 
@@ -213,6 +215,32 @@ public class MainController {
 		return new ResponseEntity<>("The password was successfully changed", HttpStatus.OK);
 	}
 
+	// Show all users
+	@RequestMapping(value = "/users", method = RequestMethod.GET)
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public @ResponseBody UsersPageAdminForm getUsersForAdmin() {
+		boolean isBracketMade = rrepository.findAll().size() != 0;
+
+		List<User> users = urepository.findAll();
+
+		// the flag to indicate whether to show make bracket button for admin or not.
+		// The bracket can be made if it wasn't made before and there are more than 2
+		// competitors
+		boolean showMakeBracket = !isBracketMade && urepository.findAllCompetitors().size() > 2;
+
+		// the flag to indicate whether to show make all competitors button for admin.
+		// Admin can make all users competitors only if the bracket was not made yet and
+		// there are more verified users than there are already competitors
+		boolean showMakeAllCompetitors = !isBracketMade
+				&& urepository.findAllVerifiedUsers().size() != urepository.findAllCompetitors().size();
+
+		// flag to indicate whether to show reset button on admin's users page. The
+		// reset can be activated only if there was a bracket made already
+		boolean showReset = isBracketMade;
+
+		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset);
+	}
+
 	// functionality to make all users participants (admin)
 	@RequestMapping("/makeallcompetitors")
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -222,8 +250,8 @@ public class MainController {
 		 * there is at least one non-competitor
 		 */
 		if (rrepository.findAll().size() == 0
-				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()) {
-			List<User> users = urepository.findAllVerified();
+				& urepository.findAllVerifiedUsers().size() != urepository.findAllCompetitors().size()) {
+			List<User> users = urepository.findAllVerifiedUsers();
 			for (User user : users) {
 				user.setIsCompetitor(true);
 				user.setIsOut(false);
@@ -493,39 +521,4 @@ public class MainController {
 		return "redirect:competitors";
 	}
 
-	// Show all users
-	@RequestMapping("/users")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String bookList(Model model) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean admin = urepository.findByUsername(authentication.getName()).getRole().equals("ADMIN");
-
-		if (admin) {
-			model.addAttribute("users", urepository.findAll()); // if curruser is admin he/she will be able to see even
-																// unverified users
-		} else {
-			model.addAttribute("users", urepository.findAllVerified());
-		}
-
-		model.addAttribute("rounds", rrepository.findAll().size());
-		model.addAttribute("competitors", urepository.findAllCompetitors().size());
-
-		// Checking, if all the games in a current stage were played to allow admin to
-		// make bracket (draw)
-		int playedRounds = rrepository.quantityOfPlayed();
-		int allCurrRounds = rrepository.findQuantityOfCurrent();
-		model.addAttribute("stageStatus",
-				playedRounds == allCurrRounds && !srepository.findCurrentStage().getStage().equals("No"));
-		model.addAttribute("canMakeAll", rrepository.findAll().size() == 0
-				& urepository.findAllVerified().size() != urepository.findAllCompetitors().size()); // attribute to
-																									// check whether we
-																									// should display
-																									// make all
-																									// participants
-																									// button
-		model.addAttribute("canReset", !(rrepository.findAll().size() == 0)); // attribute to check whether it is
-																				// suitable to display reset button
-
-		return "userlist";
-	}
 }

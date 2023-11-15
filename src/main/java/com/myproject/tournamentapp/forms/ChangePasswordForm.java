@@ -1,9 +1,9 @@
 package com.myproject.tournamentapp.forms;
 
 public class ChangePasswordForm {
-    private String oldPassword = "";
+    private String oldPassword;
 	
-    private String newPassword = "";
+    private String newPassword;
 
     public ChangePasswordForm(String oldPassword, String newPassword) {
     	this.oldPassword = oldPassword;

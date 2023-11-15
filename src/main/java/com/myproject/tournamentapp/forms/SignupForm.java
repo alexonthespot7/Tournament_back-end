@@ -1,18 +1,18 @@
 package com.myproject.tournamentapp.forms;
 
 public class SignupForm {
-	private String firstname = "";
+	private String firstname;
 	
-	private String lastname = "";
+	private String lastname;
 	
-	private boolean isCompetitor = false;
+	private boolean isCompetitor;
 
-    private String username = "";
+    private String username;
 
-    private String password = "";
+    private String password;
     
-    private String email = "";
-    
+    private String email;
+        
     public String getFirstname() {
 		return firstname;
 	}

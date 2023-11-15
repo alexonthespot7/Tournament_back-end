@@ -1,7 +1,7 @@
 package com.myproject.tournamentapp.forms;
 
 public class EmailForm {
-    private String email = "";
+    private String email;
 	
 	public String getEmail() {
 		return email;
