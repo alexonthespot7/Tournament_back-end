@@ -120,6 +120,8 @@ public class MainController {
 		user.setFirstname(personalInfo.getFirstname());
 		user.setLastname(personalInfo.getLastname());
 		user.setUsername(personalInfo.getUsername());
+		
+		if (!(rrepository.findAll().size() > 0)) user.setIsCompetitor(personalInfo.isCompetitor());
 
 		urepository.save(user);
 
