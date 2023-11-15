@@ -9,9 +9,14 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.query.Param;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,22 +25,27 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.EmailForm;
+import com.myproject.tournamentapp.forms.LoginForm;
 import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.UserFormAdmin;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
+import com.myproject.tournamentapp.service.AuthenticationService;
 
 import net.bytebuddy.utility.RandomString;
 
 @Controller
 public class UserController {
+	public static final String FRONT_END_URL = "http://localhost:3000";
+
 	@Autowired
 	private UserRepository repository;
 
@@ -46,7 +56,76 @@ public class UserController {
 	private RoundRepository rrepository;
 
 	@Autowired
+	private AuthenticationService jwtService;
+
+	@Autowired
+	AuthenticationManager authenticationManager;
+
+	@Autowired
 	private JavaMailSender mailSender;
+
+	// Restful login functionality by username or email
+	@RequestMapping(value = "/login", method = RequestMethod.POST)
+	public ResponseEntity<?> loginMethod(@RequestBody LoginForm credentials) {
+
+		User user = repository.findByEmail(credentials.getUsername());
+
+		if (user == null) {
+			user = repository.findByUsername(credentials.getUsername());
+			// if the user wasn't found neither by mail not by username method returns
+			// unauthorized response entity
+			if (user == null)
+				return new ResponseEntity<>("No user was found for the provided username/email",
+						HttpStatus.UNAUTHORIZED);
+		}
+
+		// if user was found, but the account wasn't verified yet, the method returns
+		// conflict http status
+		if (!user.isAccountVerified())
+			return new ResponseEntity<>("The account wasn't verified", HttpStatus.CONFLICT);
+
+		UsernamePasswordAuthenticationToken authenticationInstance = new UsernamePasswordAuthenticationToken(
+				user.getUsername(), credentials.getPassword());
+		Authentication auth = authenticationManager.authenticate(authenticationInstance);
+		String jwts = jwtService.getToken(auth.getName());
+
+		// Checking the authentication instance (password, double-check username)
+		User secondCheckUser = repository.findByUsername(auth.getName());
+
+		if (secondCheckUser == null)
+			return new ResponseEntity<>("Bad credentials", HttpStatus.UNAUTHORIZED);
+
+		// sending jwt as the authorization header, user's role as ALLOW header and
+		// user's id as HOST header in response entity
+		return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer " + jwts)
+				.header(HttpHeaders.ALLOW, secondCheckUser.getRole())
+				.header(HttpHeaders.HOST, secondCheckUser.getId().toString())
+				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization, Allow", "Host").build();
+	}
+
+	// Restful method for signing-up page: creates unverified user instance and
+	// sends mail with verification link to the users' email
+	@RequestMapping(value = "/signup", method = RequestMethod.POST)
+	public ResponseEntity<?> signUp(@RequestBody SignupForm signupForm)
+			throws UnsupportedEncodingException, MessagingException {
+		// check if the username or email are already in use
+		if (repository.findByEmail(signupForm.getEmail()) != null)
+			return new ResponseEntity<>("Email is already in use", HttpStatus.NOT_ACCEPTABLE);
+		if (repository.findByUsername(signupForm.getUsername()) != null)
+			return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
+
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(signupForm.getPassword());
+		String randomCode = RandomString.make(64);
+
+		User newUser = new User(signupForm.getFirstname(), signupForm.getLastname(), signupForm.getUsername(), hashPwd,
+				"USER", !signupForm.getIsCompetitor(), signupForm.getIsCompetitor(),
+				srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
+
+		repository.save(newUser);
+		this.sendVerificationEmail(newUser);
+		return new ResponseEntity<>("We sent verification link to your email address :)", HttpStatus.OK);
+	}
 
 	@RequestMapping(value = "signup")
 	public String addStudent(Model model) {
@@ -76,7 +155,7 @@ public class UserController {
 		if (!user.isPresent()) {
 			model.addAttribute("isVerified", false);
 		}
-		
+
 		model.addAttribute("rounds", rrepository.findAll().size());
 		return "edituser";
 	}
@@ -99,47 +178,50 @@ public class UserController {
 		model.addAttribute("form", new ChangePasswordForm());
 		return "changepassword";
 	}
-	
-	//reset password by email
+
+	// reset password by email
 	@RequestMapping("/resetbyemail")
-    public String resetPassword(Model model) {
-    	model.addAttribute("emailform", new EmailForm());
-    	return "resetfirst";
-    }
-	
-	//Reset password functionality
+	public String resetPassword(Model model) {
+		model.addAttribute("emailform", new EmailForm());
+		return "resetfirst";
+	}
+
+	// Reset password functionality
 	@RequestMapping(value = "resetpassword", method = RequestMethod.POST)
-    public String changePassword(@ModelAttribute("emailform") EmailForm emailForm, BindingResult bindingResult) throws UnsupportedEncodingException, MessagingException {
-    	if (!bindingResult.hasErrors()) {
-    		if (repository.findByEmail(emailForm.getEmail()) != null) {
-    			User curruser = repository.findByEmail(emailForm.getEmail());
-    			if (curruser.isAccountVerified()) {
-    				String password = RandomString.make(15);
-        			
-        			BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
-    		    	String hashPwd = bc.encode(password);
-    		    	curruser.setPasswordHash(hashPwd);
-    		    	repository.save(curruser);
-        			
-        			this.sendPasswordEmail(curruser, password);
-    			} else {
-    				bindingResult.rejectValue("email", "err.email", "User with this email is not verified: " + emailForm.getEmail());
-            		return "resetfirst";
-    			}
-        	} else {
-        		bindingResult.rejectValue("email", "err.email", "There is no user with such email: " + emailForm.getEmail());
-        		return "resetfirst";
-        	}
-    	} else {
-    		return "resetfirst";
-    	}
-    	return "redirect:/login";
-    }
+	public String changePassword(@ModelAttribute("emailform") EmailForm emailForm, BindingResult bindingResult)
+			throws UnsupportedEncodingException, MessagingException {
+		if (!bindingResult.hasErrors()) {
+			if (repository.findByEmail(emailForm.getEmail()) != null) {
+				User curruser = repository.findByEmail(emailForm.getEmail());
+				if (curruser.isAccountVerified()) {
+					String password = RandomString.make(15);
+
+					BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+					String hashPwd = bc.encode(password);
+					curruser.setPasswordHash(hashPwd);
+					repository.save(curruser);
+
+					this.sendPasswordEmail(curruser, password);
+				} else {
+					bindingResult.rejectValue("email", "err.email",
+							"User with this email is not verified: " + emailForm.getEmail());
+					return "resetfirst";
+				}
+			} else {
+				bindingResult.rejectValue("email", "err.email",
+						"There is no user with such email: " + emailForm.getEmail());
+				return "resetfirst";
+			}
+		} else {
+			return "resetfirst";
+		}
+		return "redirect:/login";
+	}
 
 	// saving user after changing password by authenticated user
 	@RequestMapping(value = "savepassword", method = RequestMethod.POST)
 	@PreAuthorize("authentication.getPrincipal().getUsername() == #form.getUsername()")
-	public String savePassword( @ModelAttribute("form") ChangePasswordForm form, BindingResult bindingResult) {
+	public String savePassword(@ModelAttribute("form") ChangePasswordForm form, BindingResult bindingResult) {
 		if (!bindingResult.hasErrors()) { // validation errors
 			User curruser = repository.findByUsername(form.getUsername());
 			BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
@@ -174,7 +256,7 @@ public class UserController {
 	 * @return
 	 */
 	@RequestMapping(value = "saveuser", method = RequestMethod.POST)
-	public String save( @ModelAttribute("signupform") SignupForm signupForm, BindingResult bindingResult,
+	public String save(@ModelAttribute("signupform") SignupForm signupForm, BindingResult bindingResult,
 			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
 		if (!bindingResult.hasErrors()) { // validation errors
 			if (signupForm.getPassword().equals(signupForm.getPasswordCheck())) { // check password match
@@ -200,7 +282,7 @@ public class UserController {
 				if (repository.findByUsername(signupForm.getUsername()) == null) { // Check if user exists
 					if (repository.findByEmail(signupForm.getEmail()) == null) { // check if email already exists
 						repository.save(newUser);
-						this.sendVerificationEmail(newUser, this.getSiteURL(request));
+						this.sendVerificationEmail(newUser);
 					} else {
 						bindingResult.rejectValue("email", "err.email", "Email is already in use");
 						return "signup";
@@ -238,7 +320,7 @@ public class UserController {
 	// save user functionality for admin
 	@RequestMapping(value = "admin/saveuser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String saveAdminUser( @ModelAttribute("form") UserFormAdmin formUserAdmin, BindingResult bindingResult,
+	public String saveAdminUser(@ModelAttribute("form") UserFormAdmin formUserAdmin, BindingResult bindingResult,
 			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
 		if (!bindingResult.hasErrors()) { // validation errors
 			if (formUserAdmin.getPassword().equals(formUserAdmin.getPasswordCheck())) { // check password match
@@ -264,7 +346,7 @@ public class UserController {
 				if (repository.findByUsername(formUserAdmin.getUsername()) == null) { // Check if user exists
 					if (repository.findByEmail(formUserAdmin.getEmail()) == null) { // check if email already exists
 						repository.save(newUser);
-						this.sendVerificationEmail(newUser, this.getSiteURL(request));
+						this.sendVerificationEmail(newUser);
 					} else {
 						bindingResult.rejectValue("email", "err.email", "Email is already in use");
 						return "signup";
@@ -286,7 +368,7 @@ public class UserController {
 	// edit user functionality for user
 	@RequestMapping(value = "/edituser", method = RequestMethod.POST)
 	@PreAuthorize("isAuthenticated()")
-	public String editUser( @ModelAttribute("form") User user, BindingResult bindingResult) {
+	public String editUser(@ModelAttribute("form") User user, BindingResult bindingResult) {
 		if (!bindingResult.hasErrors()) { // validation errors
 			user.setIsOut(!user.getIsCompetitor());
 			repository.save(user);
@@ -302,7 +384,7 @@ public class UserController {
 	// edit user functionality for admin
 	@RequestMapping(value = "admin/edituser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String editAdminUser( @ModelAttribute("form") User user, BindingResult bindingResult) {
+	public String editAdminUser(@ModelAttribute("form") User user, BindingResult bindingResult) {
 		if (!bindingResult.hasErrors()) { // validation errors
 			user.setIsOut(!user.getIsCompetitor());
 			repository.save(user);
@@ -338,45 +420,41 @@ public class UserController {
 			return true;
 		}
 	}
-	
-	//Email sending method for password reset
-	private void sendPasswordEmail(User user, String password)
-            throws MessagingException, UnsupportedEncodingException {
-        String toAddress = user.getEmail();
-        String fromAddress = "aleksei.application.noreply@gmail.com";
-        String senderName = "No reply";
-        String subject = "Reset password";
-        String content = "Dear [[name]],<br>"
-                + "Here is your new password:<br>"
-                + "<h3>[[PASSWORD]]</h3>"
-                + "Thank you,<br>"
-                + "AXOS inc.";
-                 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message);
-         
-        helper.setFrom(fromAddress, senderName);
-        helper.setTo(toAddress);
-        helper.setSubject(subject);
-         
-        content = content.replace("[[name]]", user.getUsername());
-         
-        content = content.replace("[[PASSWORD]]", password);
-         
-        helper.setText(content, true);
-         
-        mailSender.send(message);
-         
-    }
+
+	// Email sending method for password reset
+	private void sendPasswordEmail(User user, String password) throws MessagingException, UnsupportedEncodingException {
+		String toAddress = user.getEmail();
+		String fromAddress = "aleksei.application.noreply@gmail.com";
+		String senderName = "No reply";
+		String subject = "Reset password";
+		String content = "Dear [[name]],<br>" + "Here is your new password:<br>" + "<h3>[[PASSWORD]]</h3>"
+				+ "Thank you,<br>" + "AXOS inc.";
+
+		MimeMessage message = mailSender.createMimeMessage();
+		MimeMessageHelper helper = new MimeMessageHelper(message);
+
+		helper.setFrom(fromAddress, senderName);
+		helper.setTo(toAddress);
+		helper.setSubject(subject);
+
+		content = content.replace("[[name]]", user.getUsername());
+
+		content = content.replace("[[PASSWORD]]", password);
+
+		helper.setText(content, true);
+
+		mailSender.send(message);
+
+	}
 
 	// Email sending method for verification
-	private void sendVerificationEmail(User user, String siteURL)
-			throws MessagingException, UnsupportedEncodingException {
+	private void sendVerificationEmail(User user) throws MessagingException, UnsupportedEncodingException {
 		String toAddress = user.getEmail();
 		String fromAddress = "aleksei.application.noreply@gmail.com";
 		String senderName = "No reply";
 		String subject = "Please verify your registration";
-		String content = "Dear [[name]],<br>" + "Please click the link below to verify your registration:<br>"
+		String content = "Dear [[name]],<br>"
+				+ "Please click the link below to verify your registration on the tournament app:<br>"
 				+ "<h3><a href=\"[[URL]]\" target=\"_self\">VERIFY</a></h3>" + "Thank you,<br>" + "AXOS inc.";
 		String endpoint = "/verify?code=";
 
@@ -388,18 +466,12 @@ public class UserController {
 		helper.setSubject(subject);
 
 		content = content.replace("[[name]]", user.getUsername());
-		String mainURL = siteURL + endpoint + user.getVerificationCode();
+		String mainURL = FRONT_END_URL + endpoint + user.getVerificationCode();
 
 		content = content.replace("[[URL]]", mainURL);
 
 		helper.setText(content, true);
 
 		mailSender.send(message);
-	}
-
-	// method for receiving the application's host url
-	private String getSiteURL(HttpServletRequest request) {
-		String siteURL = request.getRequestURL().toString();
-		return siteURL.replace(request.getServletPath(), "");
 	}
 }

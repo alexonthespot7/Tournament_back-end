@@ -11,16 +11,18 @@ public class PersonalInfo {
 	private String email;
 	private boolean isOut;
 	private String stage;
+	private boolean isCompetitor;
 	private List<Round> rounds;
 	
 	public PersonalInfo(String firstname, String lastname, String username, String email, boolean isOut, String stage,
-			List<Round> rounds) {
+			boolean isCompetitor, List<Round> rounds) {
 		this.firstname = firstname;
 		this.lastname = lastname;
 		this.username = username;
 		this.email = email;
 		this.isOut = isOut;
 		this.stage = stage;
+		this.isCompetitor = isCompetitor;
 		this.rounds = rounds;
 	}
 
@@ -70,6 +72,14 @@ public class PersonalInfo {
 
 	public void setStage(String stage) {
 		this.stage = stage;
+	}
+	
+	public boolean isCompetitor() {
+		return isCompetitor;
+	}
+
+	public void setCompetitor(boolean isCompetitor) {
+		this.isCompetitor = isCompetitor;
 	}
 
 	public List<Round> getRounds() {

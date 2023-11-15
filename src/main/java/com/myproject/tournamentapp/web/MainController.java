@@ -78,17 +78,19 @@ public class MainController {
 	@RequestMapping("/competitors/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody PersonalInfo getPersonalInfoById(@PathVariable("userid") Long userId, Authentication auth) {
-		
-		//double check authentication
+
+		// double check authentication
 		if (auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser")) {
 			MyUser myUserInstance = (MyUser) auth.getPrincipal();
 			User user = urepository.findByUsername(myUserInstance.getUsername());
 			if (user != null && user.getId() == userId) {
 				List<Round> allRounds = user.getRounds1();
 				allRounds.addAll(user.getRounds2());
-				
-				PersonalInfo personalInfoInstance = new PersonalInfo(user.getFirstname(), user.getLastname(), user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(), allRounds);
-				
+
+				PersonalInfo personalInfoInstance = new PersonalInfo(user.getFirstname(), user.getLastname(),
+						user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(),
+						user.getIsCompetitor(), allRounds);
+
 				return personalInfoInstance;
 			} else {
 				return null;
@@ -97,43 +99,48 @@ public class MainController {
 			return null;
 		}
 	}
-	
-	//Method to display all rounds on the rounds page
+
+	// Method to display all rounds on the rounds page
 	@RequestMapping(value = "/rounds", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
 	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
 		List<Round> allRounds = rrepository.findAll();
-		if (allRounds.isEmpty()) return null; //return null if the bracket wasn't made yet
-		
+		if (allRounds.isEmpty())
+			return null; // return null if the bracket wasn't made yet
+
 		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
 		RoundPublicInfo publicRound;
-		
+
 		for (Round round : allRounds) {
-			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(), round.getStage().getStage(), round.getResult());
+			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(),
+					round.getStage().getStage(), round.getResult());
 			allPublicRounds.add(publicRound);
 		}
-		
+
 		return allPublicRounds;
 	}
-	
-	//method to send stages and rounds public info and winner (if exists) for the bracket page
+
+	// method to send stages and rounds public info and winner (if exists) for the
+	// bracket page
 	@RequestMapping(value = "/bracket", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody BracketPageInfo getBracketInfo() {
 		List<Round> allRounds = rrepository.findAll();
-		if (allRounds.isEmpty()) return null; //return null if the bracket wasn't made yet
-		
+		if (allRounds.isEmpty())
+			return null; // return null if the bracket wasn't made yet
+
 		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
 		RoundPublicInfo publicRound;
 		for (Round round : allRounds) {
-			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(), round.getStage().getStage(), round.getResult());
+			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(),
+					round.getStage().getStage(), round.getResult());
 			allPublicRounds.add(publicRound);
 		}
-		
+
 		List<Stage> allStages = srepository.findAllStages();
-		
+
 		String winner = "";
-		
+
 		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
 			Round finalOf = rrepository.findFinal();
 
@@ -142,9 +149,9 @@ public class MainController {
 				winner = result.substring(0, result.indexOf(" "));
 			}
 		}
-		
+
 		BracketPageInfo bracketInfo = new BracketPageInfo(allStages, allPublicRounds, winner);
-		
+
 		return bracketInfo;
 	}
 
@@ -300,7 +307,16 @@ public class MainController {
 	}
 
 	// -------------------------------------
-	// Making play-off bracket (ADMIN)
+	// Making play-off bracket (ADMIN) 
+	/**
+	 * 
+	 * 
+	 */
+	//IMPORTANT NB: don't forget to make all unverified users non-competitors
+	/**
+	 * 
+	 * 
+	 */
 	@RequestMapping(value = "/makedraw", method = RequestMethod.GET)
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String makeBracket() {

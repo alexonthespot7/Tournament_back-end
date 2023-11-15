@@ -22,51 +22,53 @@ public class User {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "id", nullable = false, updatable = false)
 	private Long id;
-	
+
 	@Column(name = "firstname", nullable = false)
 	private String firstname;
-	
+
 	@Column(name = "lastname", nullable = false)
 	private String lastname;
-	
+
 	@Column(name = "username", nullable = false, unique = true)
 	private String username;
-	
+
 	@Column(name = "password", nullable = false)
 	private String passwordHash;
-	
+
 	@Column(name = "role", nullable = false)
 	private String role;
-	
+
 	@Column(name = "isOut")
 	private boolean isOut;
-	
+
 	@Column(name = "isCompetitor", nullable = false)
 	private boolean isCompetitor;
-	
+
 	@ManyToOne
 	@JoinColumn(name = "stageid")
 	private Stage stage;
-	
-	@Column(name="email", nullable = false, unique = true)
+
+	@Column(name = "email", nullable = false, unique = true)
 	private String email;
-	
-	@Column(name ="verification_code", length = 64)
+
+	@Column(name = "verification_code", length = 64)
 	private String verificationCode;
-	
+
 	private boolean accountVerified;
-	
+
 	@JsonIgnore
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user1")
 	private List<Round> rounds1;
-	
+
 	@JsonIgnore
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user2")
 	private List<Round> rounds2;
-	
-	public User() {}
 
-	public User(String firstname, String lastname, String username, String passwordHash, String role, boolean isOut, boolean isCompetitor, Stage stage, String email) {
+	public User() {
+	}
+
+	public User(String firstname, String lastname, String username, String passwordHash, String role, boolean isOut,
+			boolean isCompetitor, Stage stage, String email, String verificationCode) {
 		super();
 		this.firstname = firstname;
 		this.lastname = lastname;
@@ -77,9 +79,12 @@ public class User {
 		this.isCompetitor = isCompetitor;
 		this.stage = stage;
 		this.email = email;
+		this.accountVerified = false;
+		this.verificationCode = verificationCode;
 	}
-	
-	public User(String firstname, String lastname, String username, String passwordHash, String role, boolean isOut, boolean isCompetitor, Stage stage, String email, boolean accountVerified) {
+
+	public User(String firstname, String lastname, String username, String passwordHash, String role, boolean isOut,
+			boolean isCompetitor, Stage stage, String email, boolean accountVerified, String verificationCode) {
 		super();
 		this.firstname = firstname;
 		this.lastname = lastname;
@@ -91,6 +96,7 @@ public class User {
 		this.stage = stage;
 		this.email = email;
 		this.accountVerified = accountVerified;
+		this.verificationCode = verificationCode;
 	}
 
 	public Long getId() {
@@ -124,7 +130,7 @@ public class User {
 	public void setUsername(String username) {
 		this.username = username;
 	}
-	
+
 	public String getPasswordHash() {
 		return passwordHash;
 	}
@@ -205,5 +211,4 @@ public class User {
 		this.accountVerified = accountVerified;
 	}
 
-	
 }
