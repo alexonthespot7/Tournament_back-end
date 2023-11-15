@@ -188,101 +188,6 @@ public class UserController {
 		return "edituser";
 	}
 
-	// Edit user (user)
-	@RequestMapping("/edituserbyname/{username}")
-	@PreAuthorize("authentication.getPrincipal().getUsername() == #username")
-	public String editUser(@PathVariable("username") String username, Model model) {
-		model.addAttribute("user", repository.findByUsername(username));
-		model.addAttribute("rounds", rrepository.findAll().size());
-		return "edituserbyname";
-	}
-
-	// change password for user:
-	@RequestMapping("/changepassword/{username}")
-	@PreAuthorize("authentication.getPrincipal().getUsername() == #username")
-	public String changePassword(@PathVariable("username") String username, Model model) {
-		User user = repository.findByUsername(username);
-		model.addAttribute("user", user);
-		model.addAttribute("form", new ChangePasswordForm());
-		return "changepassword";
-	}
-
-	// reset password by email
-	@RequestMapping("/resetbyemail")
-	public String resetPassword(Model model) {
-		model.addAttribute("emailform", new EmailForm());
-		return "resetfirst";
-	}
-
-	// Reset password functionality
-	@RequestMapping(value = "resetpassword", method = RequestMethod.POST)
-	public String changePassword(@ModelAttribute("emailform") EmailForm emailForm, BindingResult bindingResult)
-			throws UnsupportedEncodingException, MessagingException {
-		if (!bindingResult.hasErrors()) {
-			if (repository.findByEmail(emailForm.getEmail()) != null) {
-				User curruser = repository.findByEmail(emailForm.getEmail());
-				if (curruser.isAccountVerified()) {
-					String password = RandomString.make(15);
-
-					BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
-					String hashPwd = bc.encode(password);
-					curruser.setPasswordHash(hashPwd);
-					repository.save(curruser);
-
-					this.sendPasswordEmail(curruser, password);
-				} else {
-					bindingResult.rejectValue("email", "err.email",
-							"User with this email is not verified: " + emailForm.getEmail());
-					return "resetfirst";
-				}
-			} else {
-				bindingResult.rejectValue("email", "err.email",
-						"There is no user with such email: " + emailForm.getEmail());
-				return "resetfirst";
-			}
-		} else {
-			return "resetfirst";
-		}
-		return "redirect:/login";
-	}
-
-	// saving user after changing password by authenticated user
-	@RequestMapping(value = "savepassword", method = RequestMethod.POST)
-	@PreAuthorize("authentication.getPrincipal().getUsername() == #form.getUsername()")
-	public String savePassword(@ModelAttribute("form") ChangePasswordForm form, BindingResult bindingResult) {
-		if (!bindingResult.hasErrors()) { // validation errors
-			User curruser = repository.findByUsername(form.getUsername());
-			BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
-
-			if (bc.matches(form.getOldPassword(), curruser.getPasswordHash())) { // check if old password matches
-				if (form.getPassword().equals(form.getPasswordCheck())) { // check password match
-					String pwd = form.getPassword();
-					String hashPwd = bc.encode(pwd);
-
-					curruser.setPasswordHash(hashPwd);
-					repository.save(curruser);
-				} else {
-					bindingResult.rejectValue("passwordCheck", "err.passCheck", "Passwords does not match");
-					return "changepassword";
-				}
-			} else {
-				bindingResult.rejectValue("oldPassword", "err.oldPass", "Old password is incorrect");
-				return "changepassword";
-			}
-		} else {
-			return "changepassword";
-		}
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		return "redirect:competitors/" + authentication.getName();
-	}
-
-	/**
-	 * Create new user Check if user already exists & form validation
-	 * 
-	 * @param signupForm
-	 * @param bindingResult
-	 * @return
-	 */
 	@RequestMapping(value = "saveuser", method = RequestMethod.POST)
 	public String save(@ModelAttribute("signupform") SignupForm signupForm, BindingResult bindingResult,
 			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
@@ -329,11 +234,6 @@ public class UserController {
 		return "redirect:/signupsuccess";
 	}
 
-	// Signup success page
-	@RequestMapping("/signupsuccess")
-	public String successPage() {
-		return "successpage";
-	}
 
 	// save user functionality for admin
 	@RequestMapping(value = "admin/saveuser", method = RequestMethod.POST)
@@ -383,22 +283,6 @@ public class UserController {
 		return "redirect:/competitors";
 	}
 
-	// edit user functionality for user
-	@RequestMapping(value = "/edituser", method = RequestMethod.POST)
-	@PreAuthorize("isAuthenticated()")
-	public String editUser(@ModelAttribute("form") User user, BindingResult bindingResult) {
-		if (!bindingResult.hasErrors()) { // validation errors
-			user.setIsOut(!user.getIsCompetitor());
-			repository.save(user);
-		} else {
-			return "edituser";
-		}
-		if (user.getUsername().equals(SecurityContextHolder.getContext().getAuthentication().getName())) {
-			return "redirect:/competitors/" + user.getUsername();
-		}
-		return "redirect:logoutme";
-	}
-
 	// edit user functionality for admin
 	@RequestMapping(value = "admin/edituser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -410,14 +294,6 @@ public class UserController {
 			return "edituser";
 		}
 		return "redirect:/competitors";
-	}
-
-	// logout functionality for me
-	@RequestMapping(value = "/logoutme")
-	@PreAuthorize("isAuthenticated()")
-	public String logoutUser() {
-		SecurityContextHolder.getContext().setAuthentication(null);
-		return "redirect:/home";
 	}
 
 	// Email sending method for password reset

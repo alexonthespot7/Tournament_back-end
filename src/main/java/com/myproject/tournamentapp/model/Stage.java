@@ -1,6 +1,5 @@
 package com.myproject.tournamentapp.model;
 
-import java.sql.Date;
 import java.util.List;
 
 import javax.persistence.CascadeType;
@@ -23,11 +22,6 @@ public class Stage {
 	@Column(name = "stage", nullable = false, unique = true)
 	private String stage;
 	
-	@Column(name = "startdate", nullable = false)
-	private Date startdate;
-	
-	@Column(name = "enddate", nullable = false)
-	private Date enddate;
 	
 	@Column(name="isCurrent", nullable = false)
 	private boolean isCurrent;
@@ -42,19 +36,15 @@ public class Stage {
 	
 	public Stage() {}
 
-	public Stage(String stage, Date startdate, Date enddate, boolean isCurrent) {
+	public Stage(String stage, boolean isCurrent) {
 		super();
 		this.stage = stage;
-		this.startdate = startdate;
-		this.enddate = enddate;
 		this.isCurrent = isCurrent;
 	}
 	
-	public Stage(String stage, Date startdate, Date enddate) {
+	public Stage(String stage) {
 		super();
 		this.stage = stage;
-		this.startdate = startdate;
-		this.enddate = enddate;
 		this.isCurrent = false;
 	}
 
@@ -74,22 +64,6 @@ public class Stage {
 		this.stage = stage;
 	}
 
-	public Date getStartdate() {
-		return startdate;
-	}
-
-	public void setStartdate(Date startdate) {
-		this.startdate = startdate;
-	}
-
-	public Date getEnddate() {
-		return enddate;
-	}
-
-	public void setEnddate(Date enddate) {
-		this.enddate = enddate;
-	}
-	
 	public boolean getIsCurrent() {
 		return isCurrent;
 	}

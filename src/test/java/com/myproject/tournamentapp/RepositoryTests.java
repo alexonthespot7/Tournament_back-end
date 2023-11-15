@@ -17,7 +17,6 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
-import java.sql.Date;
 
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
@@ -70,7 +69,11 @@ class RepositoryTests {
 	// Test searching for verified and competitors functionality
 	@Test
 	public void testVerifiedUsersSearch() {
-		List<User> verifiedUsers = urepository.findAllVerified();
+		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
+				"USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true, null);
+		urepository.save(userCr1);
+		
+		List<User> verifiedUsers = urepository.findAllVerifiedUsers();
 		assertThat(verifiedUsers.size()).isNotZero();
 
 		for (User user : verifiedUsers) {
@@ -101,7 +104,7 @@ class RepositoryTests {
 	// Test Create Functionality for stage repository
 	@Test
 	public void testCreationStage() {
-		Stage stage = new Stage("1/4", Date.valueOf("2020-01-01"), Date.valueOf("2032-01-01"), true);
+		Stage stage = new Stage("1/4", true);
 		srepository.save(stage);
 		assertThat(stage.getStageid()).isNotNull();
 	}
@@ -114,8 +117,8 @@ class RepositoryTests {
 		List<Stage> stages = srepository.findByStage("No");
 		assertThat(stages).hasSize(0);
 
-		Stage stage1 = new Stage("1/2", Date.valueOf("2020-01-01"), Date.valueOf("2032-01-01"), false);
-		Stage stage2 = new Stage("1/4", Date.valueOf("2020-01-01"), Date.valueOf("2032-01-01"), true);
+		Stage stage1 = new Stage("1/2", false);
+		Stage stage2 = new Stage("1/4", true);
 		srepository.save(stage1);
 		srepository.save(stage2);
 		srepository.deleteAllStages();

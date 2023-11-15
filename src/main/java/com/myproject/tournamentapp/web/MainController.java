@@ -1,6 +1,5 @@
 package com.myproject.tournamentapp.web;
 
-import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -13,9 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -216,7 +213,7 @@ public class MainController {
 	}
 
 	// Show all users
-	@RequestMapping(value = "/users", method = RequestMethod.GET)
+	@RequestMapping(value = "/admin/users", method = RequestMethod.GET)
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public @ResponseBody UsersPageAdminForm getUsersForAdmin() {
 		boolean isBracketMade = rrepository.findAll().size() != 0;
@@ -240,7 +237,14 @@ public class MainController {
 
 		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset);
 	}
-
+	
+	//method to display stages for admin
+	@RequestMapping(value = "/admin/stages", method = RequestMethod.GET)
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public @ResponseBody List<Stage> getStagesForAdmin() {
+		return srepository.findAll();
+	}
+	
 	// functionality to make all users participants (admin)
 	@RequestMapping("/makeallcompetitors")
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -430,14 +434,14 @@ public class MainController {
 			while (x > 1) {
 				String stage = "1/" + Math.round(Math.pow(2, x - 1));
 				if (firstStage) {
-					srepository.save(new Stage(stage, Date.valueOf("2022-01-01"), Date.valueOf("2022-12-31"), true));
+					srepository.save(new Stage(stage, true));
 					firstStage = false;
 				} else {
-					srepository.save(new Stage(stage, Date.valueOf("2022-01-01"), Date.valueOf("2022-12-31")));
+					srepository.save(new Stage(stage));
 				}
 				x--;
 			}
-			srepository.save(new Stage("final", Date.valueOf("2022-01-01"), Date.valueOf("2022-12-31")));
+			srepository.save(new Stage("final"));
 
 			// creating list for adding couples there
 			List<User[]> couples = new ArrayList<>();
