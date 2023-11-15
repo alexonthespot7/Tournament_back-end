@@ -10,12 +10,16 @@ import javax.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.myproject.tournamentapp.MyUser;
 import com.myproject.tournamentapp.forms.BracketPageInfo;
+import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
 import com.myproject.tournamentapp.forms.PersonalInfo;
 import com.myproject.tournamentapp.forms.RoundPublicInfo;
@@ -75,29 +80,50 @@ public class MainController {
 	}
 
 	// method to display user's personal info on the user page
-	@RequestMapping("/competitors/{userid}")
+	@RequestMapping(value = "/competitors/{userid}", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody PersonalInfo getPersonalInfoById(@PathVariable("userid") Long userId, Authentication auth) {
 
 		// double check authentication
-		if (auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser")) {
-			MyUser myUserInstance = (MyUser) auth.getPrincipal();
-			User user = urepository.findByUsername(myUserInstance.getUsername());
-			if (user != null && user.getId() == userId) {
-				List<Round> allRounds = user.getRounds1();
-				allRounds.addAll(user.getRounds2());
-
-				PersonalInfo personalInfoInstance = new PersonalInfo(user.getFirstname(), user.getLastname(),
-						user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(),
-						user.getIsCompetitor(), allRounds);
-
-				return personalInfoInstance;
-			} else {
-				return null;
-			}
-		} else {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
 			return null;
-		}
+
+		MyUser myUserInstance = (MyUser) auth.getPrincipal();
+		User user = urepository.findByUsername(myUserInstance.getUsername());
+
+		if (user == null || user.getId() != userId)
+			return null;
+
+		List<Round> allRounds = user.getRounds1();
+		allRounds.addAll(user.getRounds2());
+
+		PersonalInfo personalInfoInstance = new PersonalInfo(user.getFirstname(), user.getLastname(),
+				user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(),
+				user.getIsCompetitor(), allRounds);
+
+		return personalInfoInstance;
+	}
+
+	// method to change user's personal info: firstname, lastname, username. Email
+	// changing requires email verification, so it will either be implemented later,
+	// or will not be implemented at all
+	@RequestMapping(value = "/updateuser/{userid}", method = RequestMethod.POST)
+	@PreAuthorize("authentication.getPrincipal().getId() == #userId")
+	public ResponseEntity<?> updateUser(@PathVariable("userid") Long userId, @RequestBody PersonalInfo personalInfo) {
+		Optional<User> optionalUser = urepository.findById(userId);
+
+		if (!optionalUser.isPresent())
+			return new ResponseEntity<>("Something wrong with authentication", HttpStatus.CONFLICT);
+
+		User user = optionalUser.get();
+
+		user.setFirstname(personalInfo.getFirstname());
+		user.setLastname(personalInfo.getLastname());
+		user.setUsername(personalInfo.getUsername());
+
+		urepository.save(user);
+
+		return new ResponseEntity<>("User info was updated successfully", HttpStatus.OK);
 	}
 
 	// Method to display all rounds on the rounds page
@@ -153,6 +179,31 @@ public class MainController {
 		BracketPageInfo bracketInfo = new BracketPageInfo(allStages, allPublicRounds, winner);
 
 		return bracketInfo;
+	}
+
+	// method to change personal's password
+	@RequestMapping(value = "/changepassword", method = RequestMethod.POST)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> changePassword(@RequestBody ChangePasswordForm changePasswordForm, Authentication auth) {
+		// check authentication;
+		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
+			return new ResponseEntity<>("Not authenticated", HttpStatus.UNAUTHORIZED);
+
+		MyUser myUserInstance = (MyUser) auth.getPrincipal();
+		User user = urepository.findByUsername(myUserInstance.getUsername());
+		if (user == null)
+			return new ResponseEntity<>("Not authenticated", HttpStatus.UNAUTHORIZED);
+
+		BCryptPasswordEncoder bcEncoder = new BCryptPasswordEncoder();
+		// check the old password provided by user
+		if (!bcEncoder.matches(changePasswordForm.getOldPassword(), user.getPasswordHash()))
+			return new ResponseEntity<>("The old password is incorrect", HttpStatus.FORBIDDEN);
+
+		String newHashedPwd = bcEncoder.encode(changePasswordForm.getNewPassword());
+		user.setPasswordHash(newHashedPwd);
+		urepository.save(user);
+
+		return new ResponseEntity<>("The password was successfully changed", HttpStatus.OK);
 	}
 
 	// functionality to make all users participants (admin)
@@ -307,12 +358,13 @@ public class MainController {
 	}
 
 	// -------------------------------------
-	// Making play-off bracket (ADMIN) 
+	// Making play-off bracket (ADMIN)
 	/**
 	 * 
 	 * 
 	 */
-	//IMPORTANT NB: don't forget to make all unverified users non-competitors
+
+	// IMPORTANT NB: don't forget to make all unverified users non-competitors
 	/**
 	 * 
 	 * 

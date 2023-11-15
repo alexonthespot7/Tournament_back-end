@@ -34,6 +34,7 @@ import com.myproject.tournamentapp.forms.EmailForm;
 import com.myproject.tournamentapp.forms.LoginForm;
 import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.UserFormAdmin;
+import com.myproject.tournamentapp.forms.VerificationCodeForm;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
@@ -127,20 +128,47 @@ public class UserController {
 		return new ResponseEntity<>("We sent verification link to your email address :)", HttpStatus.OK);
 	}
 
-	@RequestMapping(value = "signup")
-	public String addStudent(Model model) {
-		model.addAttribute("signupform", new SignupForm());
-		model.addAttribute("rounds", rrepository.findAll().size());
-		return "signup";
+	// method to verify the user's verification code and enable account
+	@RequestMapping(value = "/verify", method = RequestMethod.POST)
+	public ResponseEntity<?> verifyRequest(@RequestBody VerificationCodeForm verificationForm) {
+		String verificationCode = verificationForm.getVerificationCode();
+
+		User user = repository.findByVerificationCode(verificationCode);
+
+		if (user == null || user.isAccountVerified())
+			return new ResponseEntity<>("Verification code is incorrect or you are already verified",
+					HttpStatus.CONFLICT);
+
+		user.setVerificationCode(null);
+		user.setAccountVerified(true);
+		repository.save(user);
+
+		return new ResponseEntity<>("Verification went well", HttpStatus.OK);
 	}
 
-	// Add new user (admin)
-	@RequestMapping("/adduser")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String addUser(Model model) {
-		model.addAttribute("form", new UserFormAdmin());
-		model.addAttribute("rounds", rrepository.findAll().size());
-		return "adduser";
+	// method to reset user's password by email
+	@RequestMapping(value = "/resetpassword", method = RequestMethod.POST)
+	public ResponseEntity<?> resetPassword(@RequestBody EmailForm emailForm)
+			throws UnsupportedEncodingException, MessagingException {
+		User user = repository.findByEmail(emailForm.getEmail());
+
+		if (user == null)
+			return new ResponseEntity<>("User with this email (" + emailForm.getEmail() + ") doesn't exist",
+					HttpStatus.BAD_REQUEST);
+		if (!user.isAccountVerified())
+			return new ResponseEntity<>("User with this email (" + emailForm.getEmail() + ") is not verified",
+					HttpStatus.UNAUTHORIZED);
+
+		String password = RandomString.make(15);
+
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(password);
+		user.setPasswordHash(hashPwd);
+		repository.save(user);
+		
+		this.sendPasswordEmail(user, password);
+
+		return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
 	}
 
 	// Edit user (admin)
@@ -307,16 +335,6 @@ public class UserController {
 		return "successpage";
 	}
 
-	// User verification checking page
-	@RequestMapping("/verify")
-	public String verifyUser(@Param("code") String code) {
-		if (this.verify(code)) {
-			return "verifysuccess";
-		} else {
-			return "verifyfail";
-		}
-	}
-
 	// save user functionality for admin
 	@RequestMapping(value = "admin/saveuser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -402,33 +420,14 @@ public class UserController {
 		return "redirect:/home";
 	}
 
-	// verification method
-	private boolean verify(String verificationCode) {
-		User user = repository.findByVerificationCode(verificationCode);
-
-		if (user == null || user.isAccountVerified()) {
-			return false;
-		} else {
-			user.setVerificationCode(null);
-			user.setAccountVerified(true);
-			if (rrepository.findAll().size() > 0) {
-				user.setIsCompetitor(false);
-				user.setIsOut(true);
-			}
-			repository.save(user);
-
-			return true;
-		}
-	}
-
 	// Email sending method for password reset
 	private void sendPasswordEmail(User user, String password) throws MessagingException, UnsupportedEncodingException {
 		String toAddress = user.getEmail();
 		String fromAddress = "aleksei.application.noreply@gmail.com";
 		String senderName = "No reply";
 		String subject = "Reset password";
-		String content = "Dear [[name]],<br>" + "Here is your new password:<br>" + "<h3>[[PASSWORD]]</h3>"
-				+ "Thank you,<br>" + "AXOS inc.";
+		String content = "Dear [[name]],<br>" + "Here is your new TEMPORARY password for tournament app:<br><br>" + "<h3>[[PASSWORD]]</h3>"
+				+ "Please change this password once you logged in<br><br>Thank you,<br>" + "AXOS inc.";
 
 		MimeMessage message = mailSender.createMimeMessage();
 		MimeMessageHelper helper = new MimeMessageHelper(message);
