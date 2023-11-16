@@ -1,6 +1,7 @@
 package com.myproject.tournamentapp.web;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -442,11 +443,12 @@ public class MainController {
 	public ResponseEntity<?> makeBracket() {
 		// check if the bracket wasn't made yet, and there are more than two competitors
 		if (rrepository.findAll().size() != 0 || urepository.findAllCompetitors().size() <= 2)
-			return new ResponseEntity<>("The bracket was already made or there are less than 3 competitors", HttpStatus.NOT_ACCEPTABLE);
-		
-		//making sure that all admins are not competitors
+			return new ResponseEntity<>("The bracket was already made or there are less than 3 competitors",
+					HttpStatus.NOT_ACCEPTABLE);
+
+		// making sure that all admins are not competitors
 		List<User> admins = urepository.findAllAdmins();
-		
+
 		for (User admin : admins) {
 			if (!admin.getIsCompetitor()) {
 				continue;
@@ -455,97 +457,118 @@ public class MainController {
 			admin.setIsOut(true);
 			urepository.save(admin);
 		}
-		
-		//deleting all unverified users
+
+		// deleting all unverified users
 		List<User> users = urepository.findAll();
 		for (User user : users) {
 			if (!user.isAccountVerified()) {
 				urepository.delete(user);
 			}
 		}
-		
+
 		// Retrieving list of competitors from user table (only verified users)
 		List<User> competitors = urepository.findAllCompetitors();
 
-		// variable of power
-		int x = 1;
+		int numberOfCompetitors = competitors.size();
 
-		// finding amount of rounds
-		while (competitors.size() > Math.round(Math.pow(2, x))) {
-			x++;
-		}
-		Long roundsQuantity = (Math.round(Math.pow(2, x - 1)));
+		// find the largest power of 2 that is less than or equal to one less than the
+		// number of competitors. This number equals to the amount of the rounds of the
+		// first stage
+		int firstStageRoundsQuantity = Integer.highestOneBit(numberOfCompetitors - 1);
 
-		// creating stages in accordance with quantity of rounds and competitors
-		
-		//making the No stage which is current by default not the current one
-		boolean firstStage = true;
+		// the amount of total stages = log2 (firstStageRoundsQuantity * 2)
+		int totalStages = (int) (Math.log(2 * firstStageRoundsQuantity) / Math.log(2));
+
+		// making the No stage not the current one, because it was by default before
 		Stage noStage = srepository.findCurrentStage();
 		noStage.setIsCurrent(false);
 		srepository.save(noStage);
 
-		//creating stages. The first stage is made current
-		while (x > 1) {
-			String stage = "1/" + Math.round(Math.pow(2, x - 1));
-			if (firstStage) {
-				srepository.save(new Stage(stage, true));
-				firstStage = false;
-			} else {
-				srepository.save(new Stage(stage));
-			}
-			x--;
+		// creating stages in accordance with quantity of rounds and competitors
+
+		// first stage needs to be current now
+		String firstStageName = "1/" + firstStageRoundsQuantity;
+		Stage currentStage = new Stage(firstStageName, true);
+		srepository.save(currentStage);
+
+		// Create and save the remaining stages
+		for (int stageNumber = totalStages - 1; stageNumber > 0; stageNumber--) {
+			String stageName = "1/" + (int) Math.pow(2, stageNumber - 1);
+			srepository.save(new Stage(stageName));
 		}
-		//the final stage is always final;
+
+		// the final stage is always final;
 		srepository.save(new Stage("final"));
 
 		// creating list for adding couples there
 		List<User[]> couples = new ArrayList<>();
-		for (int i = 0; i < roundsQuantity; i++) {
+		for (int i = 0; i < firstStageRoundsQuantity; i++) {
 			couples.add(new User[] { null, null });
 		}
 
-		// creating rounds and making draw using random method of Math class
-		int index;
-		for (int i = 0; i < roundsQuantity; i++) {
-			index = (int) (Math.random() * (competitors.size()));
-			competitors.get(index).setStage(srepository.findByStage("1/" + roundsQuantity).get(0));
-			couples.get(i)[0] = competitors.get(index);
-			competitors.remove(index);
-		}
-		// creating variable for holding competitors size
-		int cycleLength = competitors.size();
+		// Shuffle the competitors to randomize their positions
+		Collections.shuffle(competitors);
 
-		for (int i = 0; i < cycleLength; i++) {
-			index = (int) (Math.random() * (competitors.size()));
-			competitors.get(index).setStage(srepository.findByStage("1/" + roundsQuantity).get(0));
-			couples.get((int) ((i % 2) * roundsQuantity - (i - i / 2) * (2 * (i % 2) - 1)))[1] = competitors.get(index);
-			competitors.remove(index);
+		// creating rounds and assigning users to the rounds: making sure that each
+		// couple will have at least one user
+		User competitor1;
+		for (int i = 0; i < firstStageRoundsQuantity; i++) {
+			competitor1 = competitors.get(0);
+			competitor1.setStage(currentStage);
+			couples.get(i)[0] = competitor1;
+
+			urepository.save(competitor1);
+			competitors.remove(0);
 		}
 
-		for (int i = 0; i < roundsQuantity; i++) {
-			if (couples.get(i)[0] != null && couples.get(i)[1] != null) {
-				rrepository.save(new Round("No", couples.get(i)[0], couples.get(i)[1],
-						srepository.findByStage("1/" + roundsQuantity).get(0)));
-			} else if (couples.get(i)[0] == null) {
-				rrepository.save(new Round(couples.get(i)[1].getUsername() + " autowin", couples.get(i)[0],
-						couples.get(i)[1], srepository.findByStage("1/" + roundsQuantity).get(0)));
+		// creating variable for holding left competitors size
+		int leftCompetitorsNumber = competitors.size();
+
+		User competitor2;
+		// populating the couples with the second competitor till there are no more
+		// competitors left
+		for (int i = 0; i < leftCompetitorsNumber; i++) {
+			competitor2 = competitors.get(0);
+			competitor2.setStage(currentStage);
+
+			// Assigns remaining users to different edges of the bracket:
+			// - For even 'i', divides 'i' by 2 for even-indexed positions.
+			// - For odd 'i', adjusts position by subtracting from
+			// 'firstStageRoundsQuantity'.
+			int coupleIndex;
+			if (i % 2 == 0) {
+				coupleIndex = i / 2;
 			} else {
-				rrepository.save(new Round(couples.get(i)[0].getUsername() + " autowin", couples.get(i)[0],
-						couples.get(i)[1], srepository.findByStage("1/" + roundsQuantity).get(0)));
+				coupleIndex = (firstStageRoundsQuantity - (i + 1) / 2);
 			}
+
+			couples.get(coupleIndex)[1] = competitor2;
+
+			urepository.save(competitor2);
+			competitors.remove(0);
 		}
 
-		// creating all the rounds until final with null competitors
-		Long xx = roundsQuantity / 2;
-		while (xx > 1) {
-			for (int i = 0; i < xx; i++) {
-				rrepository.save(new Round("No", null, null, srepository.findByStage("1/" + xx).get(0)));
+		// creating rounds for the first stage and populating them with the users
+		for (int i = 0; i < firstStageRoundsQuantity; i++) {
+			if (couples.get(i)[1] == null) {
+				rrepository.save(
+						new Round(couples.get(i)[0].getUsername() + " autowin", couples.get(i)[0], null, currentStage));
+				continue;
 			}
-			xx /= 2;
+			rrepository.save(new Round("No", couples.get(i)[0], couples.get(i)[1], currentStage));
+		}
+
+		// creating all the rounds until final with null instead of competitors
+		int roundCount  = firstStageRoundsQuantity / 2;
+		while (roundCount  > 1) {
+			for (int i = 0; i < roundCount ; i++) {
+				rrepository.save(new Round("No", null, null, srepository.findByStage("1/" + roundCount).get(0)));
+			}
+			roundCount /= 2;
 		}
 		rrepository.save(new Round("No", null, null, srepository.findByStage("final").get(0)));
 
-		return "redirect:competitors";
+		return new ResponseEntity<>("Play-off bracket was made successfully", HttpStatus.OK);
 	}
 
 	// Confirm current stage results functionality for admin and activate the new
@@ -607,18 +630,5 @@ public class MainController {
 		}
 		return "redirect:rounds";
 	}
-
-	// -------------------------------------
-	// Making play-off bracket (ADMIN)
-	/**
-	 * 
-	 * 
-	 */
-
-	// IMPORTANT NB: don't forget to make all unverified users non-competitors
-	/**
-	 * 
-	 * 
-	 */
 
 }
