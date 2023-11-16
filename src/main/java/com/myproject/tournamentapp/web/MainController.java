@@ -29,6 +29,7 @@ import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
 import com.myproject.tournamentapp.forms.PersonalInfo;
 import com.myproject.tournamentapp.forms.RoundPublicInfo;
+import com.myproject.tournamentapp.forms.RoundsForAdminForm;
 import com.myproject.tournamentapp.forms.UsersPageAdminForm;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
@@ -133,7 +134,7 @@ public class MainController {
 	@RequestMapping(value = "/rounds", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
 	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
-		List<Round> allRounds = rrepository.findAll();
+		List<Round> allRounds = rrepository.findAllCurrentAndPlayed();
 		if (allRounds.isEmpty())
 			return null; // return null if the bracket wasn't made yet
 
@@ -302,32 +303,43 @@ public class MainController {
 		return srepository.findAll();
 	}
 
-	// functionality to make all users participants (admin)
-	@RequestMapping("/makeallcompetitors")
+	// method to display rounds for the admin
+	@RequestMapping(value = "/admin/rounds", method = RequestMethod.GET)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String makeAllCompetitors() {
-		/**
-		 * making it possible to conduct this method only if there are no rounds and
-		 * there is at least one non-competitor
-		 */
-		if (rrepository.findAll().size() == 0
-				& urepository.findAllVerifiedUsers().size() != urepository.findAllCompetitors().size()) {
-			List<User> users = urepository.findAllVerifiedUsers();
-			for (User user : users) {
-				user.setIsCompetitor(true);
-				user.setIsOut(false);
-				urepository.save(user);
-			}
-		}
-		return "redirect:competitors";
+	public @ResponseBody RoundsForAdminForm getRoundsInfoForAdmin() {
+		List<Round> allRounds = rrepository.findAll();
+
+		if (allRounds.isEmpty())
+			return null;
+
+		// Checking, if all the games in a current stage were played to allow admin to
+		// confirm stage results
+		int playedInCurrentStageRounds = rrepository.quantityOfPlayedInCurrentStage();
+		int allCurrentStageRounds = rrepository.findQuantityOfGamesInCurrentStage();
+
+		// This flag indicates whether to show confirm stage results button or not;
+		boolean isCurrentStageFinished = playedInCurrentStageRounds == allCurrentStageRounds
+				&& !srepository.findCurrentStage().getStage().equals("No");
+
+		// this flag indicates whether to show set result column or not
+		boolean doesWinnerExist = srepository.findCurrentStage().getStage().equals("No")
+				&& rrepository.findAll().size() > 0;
+
+		RoundsForAdminForm roundsFormAdmin = new RoundsForAdminForm(allRounds, doesWinnerExist, isCurrentStageFinished);
+
+		return roundsFormAdmin;
 	}
-	
-	//method to display rounds for admin
+
+	// method to set the result of the round for admin
+//	@RequestMapping(value = "/admin/setresult/{roundid}", method = RequestMethod.POST)
+//	@PreAuthorize("hasAuthority('ADMIN')")
+//	public ResponseEntity<?> setRoundResultForAdmin(@PathVariable("roundid") Long roundId, @RequestBody Round round) {
+//		
+//	}
 
 	// Set result for round (admin)
-	@RequestMapping("/setresult/{roundid}")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String setResult(@PathVariable("roundid") Long roundId, Model model) {
+	@RequestMapping("/setresult/{roundid}") @PreAuthorize("hasAuthority('ADMIN')") public String setResult(
+			@PathVariable("roundid") Long roundId, Model model) {
 		Optional<Round> round = rrepository.findById(roundId);
 
 		round.ifPresent(roundIn -> {
@@ -374,12 +386,24 @@ public class MainController {
 		return "redirect:rounds";
 	}
 
-	// Show all stages (admin)
-	@RequestMapping("/stages")
+	// functionality to make all users participants (admin)
+	@RequestMapping("/makeallcompetitors")
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String stageList(Model model) {
-		model.addAttribute("stages", srepository.findAll());
-		return "stagelist";
+	public String makeAllCompetitors() {
+		/**
+		 * making it possible to conduct this method only if there are no rounds and
+		 * there is at least one non-competitor
+		 */
+		if (rrepository.findAll().size() == 0
+				& urepository.findAllVerifiedUsers().size() != urepository.findAllCompetitors().size()) {
+			List<User> users = urepository.findAllVerifiedUsers();
+			for (User user : users) {
+				user.setIsCompetitor(true);
+				user.setIsOut(false);
+				urepository.save(user);
+			}
+		}
+		return "redirect:competitors";
 	}
 
 	// Confirm current stage results (ADMIN)
@@ -387,13 +411,13 @@ public class MainController {
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String nextStage() {
 		// checking if if is the situation to confirm stage results
-		int playedRoundshere = rrepository.quantityOfPlayed();
-		int allCurrRoundshere = rrepository.findQuantityOfCurrent();
+		int playedRoundshere = rrepository.quantityOfPlayedInCurrentStage();
+		int allCurrRoundshere = rrepository.findQuantityOfGamesInCurrentStage();
 		boolean stageStatus = playedRoundshere == allCurrRoundshere
 				&& !srepository.findCurrentStage().getStage().equals("No");
 		if (stageStatus && rrepository.findAll().size() > 0) {
-			int playedRounds = rrepository.quantityOfPlayed();
-			int allCurrRounds = rrepository.findQuantityOfCurrent();
+			int playedRounds = rrepository.quantityOfPlayedInCurrentStage();
+			int allCurrRounds = rrepository.findQuantityOfGamesInCurrentStage();
 			if (playedRounds == allCurrRounds) {
 				Stage currStageBefore = playedRounds > 1 ? srepository.findByStage("1/" + playedRounds).get(0)
 						: srepository.findByStage("final").get(0);

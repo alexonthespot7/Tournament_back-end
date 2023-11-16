@@ -23,10 +23,10 @@ public interface RoundRepository extends CrudRepository<Round, Long> {
 	List<Round> findRoundsByStage(Long stageid);
 	
 	@Query(value="SELECT COUNT(roundid) FROM round JOIN stage ON (stage.stageid = round.stageid) WHERE stage.is_current = true", nativeQuery = true)
-	int findQuantityOfCurrent();
+	int findQuantityOfGamesInCurrentStage();
 	
 	@Query(value="SELECT COUNT(roundid) FROM round JOIN stage ON (stage.stageid = round.stageid) WHERE stage.is_current = true AND result <> 'No'", nativeQuery = true)
-	int quantityOfPlayed();
+	int quantityOfPlayedInCurrentStage();
 	
 	@Query(value="SELECT * FROM round JOIN stage ON (stage.stageid = round.stageid) WHERE stage.stage = 'final'", nativeQuery=true)
 	Round findFinal();
