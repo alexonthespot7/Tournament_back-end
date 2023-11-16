@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.myproject.tournamentapp.MyUser;
+import com.myproject.tournamentapp.forms.AddUserFormForAdmin;
 import com.myproject.tournamentapp.forms.BracketPageInfo;
 import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
@@ -119,9 +120,10 @@ public class MainController {
 		user.setLastname(personalInfo.getLastname());
 		user.setUsername(personalInfo.getUsername());
 
-		if (!(rrepository.findAll().size() > 0))
+		if (rrepository.findAll().size() == 0) {
 			user.setIsCompetitor(personalInfo.isCompetitor());
-
+			user.setIsOut(!personalInfo.isCompetitor());
+		}
 		urepository.save(user);
 
 		return new ResponseEntity<>("User info was updated successfully", HttpStatus.OK);
@@ -237,14 +239,69 @@ public class MainController {
 
 		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset);
 	}
-	
-	//method to display stages for admin
+
+	// method to edit user's info by admin
+	@RequestMapping(value = "/admin/updateuser/{userid}", method = RequestMethod.POST)
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public ResponseEntity<?> updateUserByAdmin(@PathVariable("userid") long userId, @RequestBody User updatedUser) {
+		Optional<User> optionalCurrentUser = urepository.findById(userId);
+
+		if (!optionalCurrentUser.isPresent())
+			return new ResponseEntity<>("User cannot be find by the specified user id", HttpStatus.BAD_REQUEST);
+
+		User currentUser = optionalCurrentUser.get();
+
+		if (updatedUser.getId() != currentUser.getId())
+			return new ResponseEntity<>("User id missmatch in request bady and path", HttpStatus.CONFLICT);
+
+		currentUser.setFirstname(updatedUser.getFirstname());
+		currentUser.setLastname(updatedUser.getLastname());
+		currentUser.setUsername(updatedUser.getUsername());
+		currentUser.setRole(updatedUser.getRole());
+		if (updatedUser.isAccountVerified() && !currentUser.isAccountVerified()) {
+			currentUser.setAccountVerified(true);
+			currentUser.setVerificationCode(null);
+		}
+		if (rrepository.findAll().size() == 0) {
+			currentUser.setIsOut(!updatedUser.getIsCompetitor());
+			currentUser.setIsCompetitor(updatedUser.getIsCompetitor());
+		}
+		urepository.save(currentUser);
+		return new ResponseEntity<>("User was updated successfully", HttpStatus.OK);
+	}
+
+	// method to delete the user for admin
+	@RequestMapping(value = "/admin/deleteuser/{userid}", method = RequestMethod.DELETE)
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public ResponseEntity<?> deleteUserForAdmin(@PathVariable("userid") Long userId) {
+		Optional<User> optionalUser = urepository.findById(userId);
+
+		if (!optionalUser.isPresent())
+			return new ResponseEntity<>("Cannot find user with specified id", HttpStatus.BAD_REQUEST);
+
+		User user = optionalUser.get();
+
+		// user can be deleted only if the bracket wasn't made yet or the user is not a
+		// competitor and the role of the user is not ADMIN
+		if (user.getRole() == "ADMIN")
+			return new ResponseEntity<>("You cannot delete ADMIN", HttpStatus.UNAUTHORIZED);
+
+		if (rrepository.findAll().size() > 0 && user.getIsCompetitor())
+			return new ResponseEntity<>("The competitor cannot be deleted after the competition has started",
+					HttpStatus.CONFLICT);
+
+		urepository.deleteById(userId);
+
+		return new ResponseEntity<>("The user was deleted successfully", HttpStatus.OK);
+	}
+
+	// method to display stages for admin
 	@RequestMapping(value = "/admin/stages", method = RequestMethod.GET)
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public @ResponseBody List<Stage> getStagesForAdmin() {
 		return srepository.findAll();
 	}
-	
+
 	// functionality to make all users participants (admin)
 	@RequestMapping("/makeallcompetitors")
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -264,20 +321,8 @@ public class MainController {
 		}
 		return "redirect:competitors";
 	}
-
-	// Delete user (admin)
-	@RequestMapping("/deleteuser/{id}")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String deleteUserId(@PathVariable("id") Long userId, Model model) {
-		// making it possible to delete competitors only before draw;
-		Optional<User> user = urepository.findById(userId);
-		user.ifPresent(userIn -> {
-			if (rrepository.findAll().size() == 0 || !userIn.getIsCompetitor()) {
-				urepository.deleteById(userId);
-			}
-		});
-		return "redirect:../competitors";
-	}
+	
+	//method to display rounds for admin
 
 	// Set result for round (admin)
 	@RequestMapping("/setresult/{roundid}")

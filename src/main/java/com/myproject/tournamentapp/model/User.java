@@ -64,12 +64,11 @@ public class User {
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user2")
 	private List<Round> rounds2;
 
-	public User() {
-	}
-
+	public User() {}
+	
+	//constructor for sign-up
 	public User(String firstname, String lastname, String username, String passwordHash, String role, boolean isOut,
 			boolean isCompetitor, Stage stage, String email, String verificationCode) {
-		super();
 		this.firstname = firstname;
 		this.lastname = lastname;
 		this.username = username;
@@ -85,7 +84,6 @@ public class User {
 
 	public User(String firstname, String lastname, String username, String passwordHash, String role, boolean isOut,
 			boolean isCompetitor, Stage stage, String email, boolean accountVerified, String verificationCode) {
-		super();
 		this.firstname = firstname;
 		this.lastname = lastname;
 		this.username = username;

@@ -29,11 +29,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import com.myproject.tournamentapp.forms.AddUserFormForAdmin;
 import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.EmailForm;
 import com.myproject.tournamentapp.forms.LoginForm;
 import com.myproject.tournamentapp.forms.SignupForm;
-import com.myproject.tournamentapp.forms.UserFormAdmin;
 import com.myproject.tournamentapp.forms.VerificationCodeForm;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.StageRepository;
@@ -120,12 +120,18 @@ public class UserController {
 		String randomCode = RandomString.make(64);
 
 		User newUser = new User(signupForm.getFirstname(), signupForm.getLastname(), signupForm.getUsername(), hashPwd,
-				"USER", !signupForm.getIsCompetitor(), signupForm.getIsCompetitor(),
+				"USER", true, false,
 				srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
 
+		//check if the competition has already started and whether we should allow to set participant status
+		if (rrepository.findAll().size() == 0) {
+			newUser.setIsOut(!signupForm.getIsCompetitor());
+			newUser.setIsCompetitor(signupForm.getIsCompetitor());
+		}
+		
 		repository.save(newUser);
 		this.sendVerificationEmail(newUser);
-		return new ResponseEntity<>("We sent verification link to your email address :)", HttpStatus.OK);
+		return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
 	}
 
 	// method to verify the user's verification code and enable account
@@ -165,135 +171,48 @@ public class UserController {
 		String hashPwd = bc.encode(password);
 		user.setPasswordHash(hashPwd);
 		repository.save(user);
-		
+
 		this.sendPasswordEmail(user, password);
 
 		return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
 	}
 
-	// Edit user (admin)
-	@RequestMapping("/edituser/{id}")
+	// method to save new user created by admin
+	@RequestMapping(value = "/admin/adduser", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String editUser(@PathVariable("id") Long userId, Model model) {
-		model.addAttribute("user", repository.findById(userId));
-		Optional<User> user = repository.findById(userId);
-		user.ifPresent(userIn -> {
-			model.addAttribute("isVerified", userIn.isAccountVerified());
-		});
-		if (!user.isPresent()) {
-			model.addAttribute("isVerified", false);
+	public ResponseEntity<?> addNewUserByAdmin(@RequestBody AddUserFormForAdmin userForm)
+			throws UnsupportedEncodingException, MessagingException {
+		// check if the username or email are already in use
+		if (repository.findByEmail(userForm.getEmail()) != null)
+			return new ResponseEntity<>("Email is already in use", HttpStatus.NOT_ACCEPTABLE);
+		if (repository.findByUsername(userForm.getUsername()) != null)
+			return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
+
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(userForm.getPassword());
+
+		User newUser = new User(userForm.getFirstname(), userForm.getLastname(), userForm.getUsername(), hashPwd,
+				userForm.getRole(), true, false,
+				srepository.findByStage("No").get(0), userForm.getEmail(), null);
+		
+		//check if the competition has started and whether we can change a participant status
+		if (rrepository.findAll().size() == 0) {
+			newUser.setIsCompetitor(userForm.getIsCompetitor());
+			newUser.setIsOut(!userForm.getIsCompetitor());
 		}
-
-		model.addAttribute("rounds", rrepository.findAll().size());
-		return "edituser";
-	}
-
-	@RequestMapping(value = "saveuser", method = RequestMethod.POST)
-	public String save(@ModelAttribute("signupform") SignupForm signupForm, BindingResult bindingResult,
-			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
-		if (!bindingResult.hasErrors()) { // validation errors
-			if (signupForm.getPassword().equals(signupForm.getPasswordCheck())) { // check password match
-				String pwd = signupForm.getPassword();
-				BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
-				String hashPwd = bc.encode(pwd);
-
-				String randomCode = RandomString.make(64);
-
-				User newUser = new User();
-				newUser.setPasswordHash(hashPwd);
-				newUser.setUsername(signupForm.getUsername());
-				newUser.setRole("USER");
-				newUser.setFirstname(signupForm.getFirstname());
-				newUser.setLastname(signupForm.getLastname());
-				newUser.setIsOut(!signupForm.getIsCompetitor());
-				newUser.setIsCompetitor(signupForm.getIsCompetitor());
-				newUser.setStage(srepository.findByStage("No").get(0));
-				newUser.setEmail(signupForm.getEmail());
-				newUser.setAccountVerified(false);
-				newUser.setVerificationCode(randomCode);
-
-				if (repository.findByUsername(signupForm.getUsername()) == null) { // Check if user exists
-					if (repository.findByEmail(signupForm.getEmail()) == null) { // check if email already exists
-						repository.save(newUser);
-						this.sendVerificationEmail(newUser);
-					} else {
-						bindingResult.rejectValue("email", "err.email", "Email is already in use");
-						return "signup";
-					}
-				} else {
-					bindingResult.rejectValue("username", "err.username", "Username already exists");
-					return "signup";
-				}
-			} else {
-				bindingResult.rejectValue("passwordCheck", "err.passCheck", "Passwords does not match");
-				return "signup";
-			}
-		} else {
-			return "signup";
+		
+		//check if admin created a verified user
+		if (userForm.isVerified()) {
+			newUser.setAccountVerified(true);
+			repository.save(newUser);
+			return new ResponseEntity<>("The user was added to database", HttpStatus.OK);
 		}
-		return "redirect:/signupsuccess";
-	}
-
-
-	// save user functionality for admin
-	@RequestMapping(value = "admin/saveuser", method = RequestMethod.POST)
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String saveAdminUser(@ModelAttribute("form") UserFormAdmin formUserAdmin, BindingResult bindingResult,
-			HttpServletRequest request) throws UnsupportedEncodingException, MessagingException {
-		if (!bindingResult.hasErrors()) { // validation errors
-			if (formUserAdmin.getPassword().equals(formUserAdmin.getPasswordCheck())) { // check password match
-				String pwd = formUserAdmin.getPassword();
-				BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
-				String hashPwd = bc.encode(pwd);
-
-				String randomCode = RandomString.make(64);
-
-				User newUser = new User();
-				newUser.setPasswordHash(hashPwd);
-				newUser.setUsername(formUserAdmin.getUsername());
-				newUser.setRole(formUserAdmin.getRole());
-				newUser.setFirstname(formUserAdmin.getFirstname());
-				newUser.setLastname(formUserAdmin.getLastname());
-				newUser.setIsOut(!formUserAdmin.getIsCompetitor());
-				newUser.setIsCompetitor(formUserAdmin.getIsCompetitor());
-				newUser.setStage(srepository.findByStage("No").get(0));
-				newUser.setEmail(formUserAdmin.getEmail());
-				newUser.setAccountVerified(false);
-				newUser.setVerificationCode(randomCode);
-
-				if (repository.findByUsername(formUserAdmin.getUsername()) == null) { // Check if user exists
-					if (repository.findByEmail(formUserAdmin.getEmail()) == null) { // check if email already exists
-						repository.save(newUser);
-						this.sendVerificationEmail(newUser);
-					} else {
-						bindingResult.rejectValue("email", "err.email", "Email is already in use");
-						return "signup";
-					}
-				} else {
-					bindingResult.rejectValue("username", "err.username", "Username already exists");
-					return "adduser";
-				}
-			} else {
-				bindingResult.rejectValue("passwordCheck", "err.passCheck", "Passwords does not match");
-				return "adduser";
-			}
-		} else {
-			return "adduser";
-		}
-		return "redirect:/competitors";
-	}
-
-	// edit user functionality for admin
-	@RequestMapping(value = "admin/edituser", method = RequestMethod.POST)
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String editAdminUser(@ModelAttribute("form") User user, BindingResult bindingResult) {
-		if (!bindingResult.hasErrors()) { // validation errors
-			user.setIsOut(!user.getIsCompetitor());
-			repository.save(user);
-		} else {
-			return "edituser";
-		}
-		return "redirect:/competitors";
+		
+		String randomCode = RandomString.make(64);
+		newUser.setVerificationCode(randomCode);
+		repository.save(newUser);
+		this.sendVerificationEmail(newUser);
+		return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
 	}
 
 	// Email sending method for password reset
@@ -302,8 +221,9 @@ public class UserController {
 		String fromAddress = "aleksei.application.noreply@gmail.com";
 		String senderName = "No reply";
 		String subject = "Reset password";
-		String content = "Dear [[name]],<br>" + "Here is your new TEMPORARY password for tournament app:<br><br>" + "<h3>[[PASSWORD]]</h3>"
-				+ "Please change this password once you logged in<br><br>Thank you,<br>" + "AXOS inc.";
+		String content = "Dear [[name]],<br>" + "Here is your new TEMPORARY password for tournament app:<br><br>"
+				+ "<h3>[[PASSWORD]]</h3>" + "Please change this password once you logged in<br><br>Thank you,<br>"
+				+ "AXOS inc.";
 
 		MimeMessage message = mailSender.createMimeMessage();
 		MimeMessageHelper helper = new MimeMessageHelper(message);
