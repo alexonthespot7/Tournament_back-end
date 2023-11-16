@@ -335,28 +335,36 @@ public class MainController {
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<?> setRoundResultForAdmin(@PathVariable("roundid") Long roundId, @RequestBody Round round) {
 		Round localRound = rrepository.findRoundById(roundId);
-		
-		if (localRound == null || roundId != round.getRoundid()) return new ResponseEntity<>("Round id missmatch with the one in request body and the one in path", HttpStatus.BAD_REQUEST);
-		
-		if (localRound.getStage() != srepository.findCurrentStage()) return new ResponseEntity<>("You cannot change the status of the round out of the current stage", HttpStatus.NOT_ACCEPTABLE);
-		
-		if (localRound.getUser1() == null || localRound.getUser2() == null) return new ResponseEntity<>("The rounds with only one user shouldn't be handled by admin", HttpStatus.UNAUTHORIZED);
-		
+
+		if (localRound == null || roundId != round.getRoundid())
+			return new ResponseEntity<>("Round id missmatch with the one in request body and the one in path",
+					HttpStatus.BAD_REQUEST);
+
+		if (localRound.getStage() != srepository.findCurrentStage())
+			return new ResponseEntity<>("You cannot change the status of the round out of the current stage",
+					HttpStatus.NOT_ACCEPTABLE);
+
+		if (localRound.getUser1() == null || localRound.getUser2() == null)
+			return new ResponseEntity<>("The rounds with only one user shouldn't be handled by admin",
+					HttpStatus.UNAUTHORIZED);
+
 		localRound.setResult(round.getResult());
 		rrepository.save(localRound);
-		
-		//now as we are saving the results to the database and everyone is able to see the results, we should update the competitors status as well
+
+		// now as we are saving the results to the database and everyone is able to see
+		// the results, we should update the competitors status as well
 		String result = localRound.getResult();
 		User winner;
 		User looser;
-		
-		//in case of No result there is no winner;
+
+		// in case of No result there is no winner;
 		if (result.indexOf(" ") == -1) {
 			winner = localRound.getUser1();
 			looser = localRound.getUser2();
 			looser.setIsOut(false);
 		} else {
-			//the results are stored in the following pattern: <winner_username> win. E.g. "alex win", so the winner's username is right before the whitespace
+			// the results are stored in the following pattern: <winner_username> win. E.g.
+			// "alex win", so the winner's username is right before the whitespace
 			String winnerUsername = result.substring(0, result.indexOf(" "));
 			if (localRound.getUser1().getUsername().equals(winnerUsername)) {
 				winner = localRound.getUser1();
@@ -368,83 +376,181 @@ public class MainController {
 			looser.setIsOut(true);
 		}
 		winner.setIsOut(false);
-		
+
 		urepository.save(looser);
 		urepository.save(winner);
 		return new ResponseEntity<>("The round result was set successfully", HttpStatus.OK);
 	}
 
-	// Set result for round (admin)
-	@RequestMapping("/setresult/{roundid}") @PreAuthorize("hasAuthority('ADMIN')") public String setResult(
-			@PathVariable("roundid") Long roundId, Model model) {
-		Optional<Round> round = rrepository.findById(roundId);
+	// Method to make all users participants (admin)
+	@RequestMapping(value = "/admin/makeallcompetitors", method = RequestMethod.POST)
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public ResponseEntity<?> makeAllCompetitors() {
+		// check if the bracket was already made and if there are some verified users
+		// who are not competitors yet, assuming only users are participants;
+		if (rrepository.findAll().size() != 0
+				|| urepository.findAllVerifiedUsers().size() == urepository.findAllCompetitors().size())
+			return new ResponseEntity<>(
+					"It's not allowed to use this method once the bracket is made or all verified users are competitors",
+					HttpStatus.NOT_ACCEPTABLE);
 
-		round.ifPresent(roundIn -> {
-			model.addAttribute("round", roundIn);
-			model.addAttribute("user1", roundIn.getUser1());
-			model.addAttribute("user2", roundIn.getUser2());
-			model.addAttribute("stage", roundIn.getStage());
-		});
-		if (!round.isPresent()) {
-			model.addAttribute("round", null);
-			model.addAttribute("user1", null);
-			model.addAttribute("user2", null);
-			model.addAttribute("stage", null);
+		List<User> users = urepository.findAllVerifiedUsers();
+		for (User user : users) {
+			user.setIsCompetitor(true);
+			user.setIsOut(false);
+			urepository.save(user);
 		}
-		// results can be set only for current stage rounds
-		return rrepository.findRoundById(roundId).getStage() == srepository.findCurrentStage() ? "setresult"
-				: "redirect:../competitors";
+		return new ResponseEntity<>("The method was invoked successfully", HttpStatus.OK);
 	}
 
-	// Save new round (admin)
-	@RequestMapping(value = "/saveround", method = RequestMethod.POST)
+	// method with admin's reset functionality: all users become non-participants
+	// and rounds are cleared + deleting unverified accounts
+	@Transactional
+	@RequestMapping(value = "/admin/reset", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String saveRound(Round round) {
+	public ResponseEntity<?> resetAll() {
+		if (rrepository.findAll().size() == 0)
+			return new ResponseEntity<>("There is nothing to reset yet", HttpStatus.CONFLICT);
 
-		// making it possible to save rounds of current stage only;
-		if (round.getStage() == srepository.findCurrentStage()) {
-			rrepository.save(round);
-
-			// changing the status of looser
-			String result = round.getResult();
-			if (result.indexOf(" ") != -1) {
-				result = result.substring(0, result.indexOf(" "));
-				User looser;
-				if (round.getUser1().getUsername().equals(result)) {
-					looser = urepository.findByUsername(round.getUser2().getUsername());
-				} else {
-					looser = urepository.findByUsername(round.getUser1().getUsername());
-				}
-
-				looser.setIsOut(true);
-				urepository.save(looser);
+		List<User> users = urepository.findAll();
+		for (User user : users) {
+			if (!user.isAccountVerified()) {
+				urepository.delete(user);
+				continue;
 			}
+
+			user.setStage(srepository.findByStage("No").get(0));
+			user.setIsCompetitor(false);
+			user.setIsOut(true);
+			urepository.save(user);
 		}
-		return "redirect:rounds";
+
+		rrepository.deleteAll();
+
+		srepository.deleteAllStages();
+		Stage noStage = srepository.findByStage("No").get(0);
+		noStage.setIsCurrent(true);
+		srepository.save(noStage);
+
+		return new ResponseEntity<>("Everything was reset successfully", HttpStatus.OK);
 	}
 
-	// functionality to make all users participants (admin)
-	@RequestMapping("/makeallcompetitors")
+	// method to make draw and create bracket: stages, rounds for the admin
+	@Transactional
+	@RequestMapping(value = "/admin/makebracket", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String makeAllCompetitors() {
-		/**
-		 * making it possible to conduct this method only if there are no rounds and
-		 * there is at least one non-competitor
-		 */
-		if (rrepository.findAll().size() == 0
-				& urepository.findAllVerifiedUsers().size() != urepository.findAllCompetitors().size()) {
-			List<User> users = urepository.findAllVerifiedUsers();
-			for (User user : users) {
-				user.setIsCompetitor(true);
-				user.setIsOut(false);
-				urepository.save(user);
+	public ResponseEntity<?> makeBracket() {
+		// check if the bracket wasn't made yet, and there are more than two competitors
+		if (rrepository.findAll().size() != 0 || urepository.findAllCompetitors().size() <= 2)
+			return new ResponseEntity<>("The bracket was already made or there are less than 3 competitors", HttpStatus.NOT_ACCEPTABLE);
+		
+		//making sure that all admins are not competitors
+		List<User> admins = urepository.findAllAdmins();
+		
+		for (User admin : admins) {
+			if (!admin.getIsCompetitor()) {
+				continue;
+			}
+			admin.setIsCompetitor(false);
+			admin.setIsOut(true);
+			urepository.save(admin);
+		}
+		
+		//deleting all unverified users
+		List<User> users = urepository.findAll();
+		for (User user : users) {
+			if (!user.isAccountVerified()) {
+				urepository.delete(user);
 			}
 		}
+		
+		// Retrieving list of competitors from user table (only verified users)
+		List<User> competitors = urepository.findAllCompetitors();
+
+		// variable of power
+		int x = 1;
+
+		// finding amount of rounds
+		while (competitors.size() > Math.round(Math.pow(2, x))) {
+			x++;
+		}
+		Long roundsQuantity = (Math.round(Math.pow(2, x - 1)));
+
+		// creating stages in accordance with quantity of rounds and competitors
+		
+		//making the No stage which is current by default not the current one
+		boolean firstStage = true;
+		Stage noStage = srepository.findCurrentStage();
+		noStage.setIsCurrent(false);
+		srepository.save(noStage);
+
+		//creating stages. The first stage is made current
+		while (x > 1) {
+			String stage = "1/" + Math.round(Math.pow(2, x - 1));
+			if (firstStage) {
+				srepository.save(new Stage(stage, true));
+				firstStage = false;
+			} else {
+				srepository.save(new Stage(stage));
+			}
+			x--;
+		}
+		//the final stage is always final;
+		srepository.save(new Stage("final"));
+
+		// creating list for adding couples there
+		List<User[]> couples = new ArrayList<>();
+		for (int i = 0; i < roundsQuantity; i++) {
+			couples.add(new User[] { null, null });
+		}
+
+		// creating rounds and making draw using random method of Math class
+		int index;
+		for (int i = 0; i < roundsQuantity; i++) {
+			index = (int) (Math.random() * (competitors.size()));
+			competitors.get(index).setStage(srepository.findByStage("1/" + roundsQuantity).get(0));
+			couples.get(i)[0] = competitors.get(index);
+			competitors.remove(index);
+		}
+		// creating variable for holding competitors size
+		int cycleLength = competitors.size();
+
+		for (int i = 0; i < cycleLength; i++) {
+			index = (int) (Math.random() * (competitors.size()));
+			competitors.get(index).setStage(srepository.findByStage("1/" + roundsQuantity).get(0));
+			couples.get((int) ((i % 2) * roundsQuantity - (i - i / 2) * (2 * (i % 2) - 1)))[1] = competitors.get(index);
+			competitors.remove(index);
+		}
+
+		for (int i = 0; i < roundsQuantity; i++) {
+			if (couples.get(i)[0] != null && couples.get(i)[1] != null) {
+				rrepository.save(new Round("No", couples.get(i)[0], couples.get(i)[1],
+						srepository.findByStage("1/" + roundsQuantity).get(0)));
+			} else if (couples.get(i)[0] == null) {
+				rrepository.save(new Round(couples.get(i)[1].getUsername() + " autowin", couples.get(i)[0],
+						couples.get(i)[1], srepository.findByStage("1/" + roundsQuantity).get(0)));
+			} else {
+				rrepository.save(new Round(couples.get(i)[0].getUsername() + " autowin", couples.get(i)[0],
+						couples.get(i)[1], srepository.findByStage("1/" + roundsQuantity).get(0)));
+			}
+		}
+
+		// creating all the rounds until final with null competitors
+		Long xx = roundsQuantity / 2;
+		while (xx > 1) {
+			for (int i = 0; i < xx; i++) {
+				rrepository.save(new Round("No", null, null, srepository.findByStage("1/" + xx).get(0)));
+			}
+			xx /= 2;
+		}
+		rrepository.save(new Round("No", null, null, srepository.findByStage("final").get(0)));
+
 		return "redirect:competitors";
 	}
 
-	// Confirm current stage results (ADMIN)
-	@RequestMapping("/nextstage")
+	// Confirm current stage results functionality for admin and activate the new
+	// stage
+	@RequestMapping(value = "/admin/confirmstageresults", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public String nextStage() {
 		// checking if if is the situation to confirm stage results
@@ -514,121 +620,5 @@ public class MainController {
 	 * 
 	 * 
 	 */
-	@RequestMapping(value = "/makedraw", method = RequestMethod.GET)
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String makeBracket() {
-		// checking if draw wasn't made before and there are more than 2 competitors.
-		if (rrepository.findAll().size() == 0 & urepository.findAllCompetitors().size() > 2) {
-			// Retrieving list of competitors from user table
-			List<User> competitors = urepository.findAllCompetitors();
-
-			// variable of extent
-			int x = 1;
-
-			// finding amount of rounds
-			while (competitors.size() > Math.round(Math.pow(2, x))) {
-				x++;
-			}
-			Long roundsQuantity = (Math.round(Math.pow(2, x - 1)));
-
-			// creating stages in accordance with quantity of rounds and competitors
-			boolean firstStage = true;
-			Stage no = srepository.findCurrentStage();
-			no.setIsCurrent(false);
-			srepository.save(no);
-
-			while (x > 1) {
-				String stage = "1/" + Math.round(Math.pow(2, x - 1));
-				if (firstStage) {
-					srepository.save(new Stage(stage, true));
-					firstStage = false;
-				} else {
-					srepository.save(new Stage(stage));
-				}
-				x--;
-			}
-			srepository.save(new Stage("final"));
-
-			// creating list for adding couples there
-			List<User[]> couples = new ArrayList<>();
-			for (int i = 0; i < roundsQuantity; i++) {
-				couples.add(new User[] { null, null });
-			}
-
-			// creating rounds and making draw using random method of Math class
-			int index;
-			for (int i = 0; i < roundsQuantity; i++) {
-				index = (int) (Math.random() * (competitors.size()));
-				competitors.get(index).setStage(srepository.findByStage("1/" + roundsQuantity).get(0));
-				couples.get(i)[0] = competitors.get(index);
-				competitors.remove(index);
-			}
-			// creating variable for holding competitors size
-			int cycleLength = competitors.size();
-
-			for (int i = 0; i < cycleLength; i++) {
-				index = (int) (Math.random() * (competitors.size()));
-				competitors.get(index).setStage(srepository.findByStage("1/" + roundsQuantity).get(0));
-				couples.get((int) ((i % 2) * roundsQuantity - (i - i / 2) * (2 * (i % 2) - 1)))[1] = competitors
-						.get(index);
-				competitors.remove(index);
-			}
-
-			for (int i = 0; i < roundsQuantity; i++) {
-				if (couples.get(i)[0] != null && couples.get(i)[1] != null) {
-					rrepository.save(new Round("No", couples.get(i)[0], couples.get(i)[1],
-							srepository.findByStage("1/" + roundsQuantity).get(0)));
-				} else if (couples.get(i)[0] == null) {
-					rrepository.save(new Round(couples.get(i)[1].getUsername() + " autowin", couples.get(i)[0],
-							couples.get(i)[1], srepository.findByStage("1/" + roundsQuantity).get(0)));
-				} else {
-					rrepository.save(new Round(couples.get(i)[0].getUsername() + " autowin", couples.get(i)[0],
-							couples.get(i)[1], srepository.findByStage("1/" + roundsQuantity).get(0)));
-				}
-			}
-
-			// creating all the rounds until final with null competitors
-			Long xx = roundsQuantity / 2;
-			while (xx > 1) {
-				for (int i = 0; i < xx; i++) {
-					rrepository.save(new Round("No", null, null, srepository.findByStage("1/" + xx).get(0)));
-				}
-				xx /= 2;
-			}
-			rrepository.save(new Round("No", null, null, srepository.findByStage("final").get(0)));
-		}
-
-		return "redirect:competitors";
-	}
-
-	// Reset functionality: all users become non-participants and rounds are cleared
-	// (admin)
-	@Transactional
-	@RequestMapping("/reset")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public String resetAll() {
-		if (!(rrepository.findAll().size() == 0)) {
-			List<User> users = urepository.findAll();
-			for (User user : users) {
-				user.setStage(srepository.findByStage("No").get(0));
-				user.setIsCompetitor(false);
-				user.setIsOut(true);
-				if (!user.isAccountVerified()) {
-					urepository.delete(user);
-				} else {
-					urepository.save(user);
-				}
-			}
-
-			rrepository.deleteAll();
-
-			srepository.deleteAllStages();
-			Stage noStage = srepository.findByStage("No").get(0);
-			noStage.setIsCurrent(true);
-			srepository.save(noStage);
-		}
-
-		return "redirect:competitors";
-	}
 
 }

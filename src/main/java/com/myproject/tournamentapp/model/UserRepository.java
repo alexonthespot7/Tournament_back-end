@@ -8,10 +8,13 @@ import org.springframework.data.repository.CrudRepository;
 public interface UserRepository extends CrudRepository<User, Long> {
 	User findByUsername(String username);
 	
+	@Query(value="SELECT * FROM users WHERE role = 'ADMIN'", nativeQuery = true)
+	List<User> findAllAdmins();
+	
 	@Query(value="SELECT * FROM users WHERE account_verified = true AND role = 'USER'", nativeQuery = true)
 	List<User> findAllVerifiedUsers();
 	
-	@Query(value="SELECT * FROM users WHERE is_competitor = true AND account_verified = true", nativeQuery = true)
+	@Query(value="SELECT * FROM users WHERE is_competitor = true AND account_verified = true AND role = 'USER'", nativeQuery = true)
 	List<User> findAllCompetitors();
 	
 	@Override
