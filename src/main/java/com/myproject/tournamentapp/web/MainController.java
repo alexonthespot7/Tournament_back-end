@@ -331,11 +331,48 @@ public class MainController {
 	}
 
 	// method to set the result of the round for admin
-//	@RequestMapping(value = "/admin/setresult/{roundid}", method = RequestMethod.POST)
-//	@PreAuthorize("hasAuthority('ADMIN')")
-//	public ResponseEntity<?> setRoundResultForAdmin(@PathVariable("roundid") Long roundId, @RequestBody Round round) {
-//		
-//	}
+	@RequestMapping(value = "/admin/setresult/{roundid}", method = RequestMethod.POST)
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public ResponseEntity<?> setRoundResultForAdmin(@PathVariable("roundid") Long roundId, @RequestBody Round round) {
+		Round localRound = rrepository.findRoundById(roundId);
+		
+		if (localRound == null || roundId != round.getRoundid()) return new ResponseEntity<>("Round id missmatch with the one in request body and the one in path", HttpStatus.BAD_REQUEST);
+		
+		if (localRound.getStage() != srepository.findCurrentStage()) return new ResponseEntity<>("You cannot change the status of the round out of the current stage", HttpStatus.NOT_ACCEPTABLE);
+		
+		if (localRound.getUser1() == null || localRound.getUser2() == null) return new ResponseEntity<>("The rounds with only one user shouldn't be handled by admin", HttpStatus.UNAUTHORIZED);
+		
+		localRound.setResult(round.getResult());
+		rrepository.save(localRound);
+		
+		//now as we are saving the results to the database and everyone is able to see the results, we should update the competitors status as well
+		String result = localRound.getResult();
+		User winner;
+		User looser;
+		
+		//in case of No result there is no winner;
+		if (result.indexOf(" ") == -1) {
+			winner = localRound.getUser1();
+			looser = localRound.getUser2();
+			looser.setIsOut(false);
+		} else {
+			//the results are stored in the following pattern: <winner_username> win. E.g. "alex win", so the winner's username is right before the whitespace
+			String winnerUsername = result.substring(0, result.indexOf(" "));
+			if (localRound.getUser1().getUsername().equals(winnerUsername)) {
+				winner = localRound.getUser1();
+				looser = localRound.getUser2();
+			} else {
+				winner = localRound.getUser2();
+				looser = localRound.getUser1();
+			}
+			looser.setIsOut(true);
+		}
+		winner.setIsOut(false);
+		
+		urepository.save(looser);
+		urepository.save(winner);
+		return new ResponseEntity<>("The round result was set successfully", HttpStatus.OK);
+	}
 
 	// Set result for round (admin)
 	@RequestMapping("/setresult/{roundid}") @PreAuthorize("hasAuthority('ADMIN')") public String setResult(
