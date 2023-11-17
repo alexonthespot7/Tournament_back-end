@@ -1,36 +1,31 @@
 package com.myproject.tournamentapp.web;
 
 import java.io.UnsupportedEncodingException;
-import java.util.Optional;
 
+import javax.mail.AuthenticationFailedException;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
-import javax.servlet.http.HttpServletRequest;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.myproject.tournamentapp.forms.AddUserFormForAdmin;
-import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.EmailForm;
 import com.myproject.tournamentapp.forms.LoginForm;
 import com.myproject.tournamentapp.forms.SignupForm;
@@ -45,6 +40,8 @@ import net.bytebuddy.utility.RandomString;
 
 @Controller
 public class UserController {
+	private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
 	public static final String FRONT_END_URL = "http://localhost:3000";
 
 	@Autowired
@@ -120,18 +117,24 @@ public class UserController {
 		String randomCode = RandomString.make(64);
 
 		User newUser = new User(signupForm.getFirstname(), signupForm.getLastname(), signupForm.getUsername(), hashPwd,
-				"USER", true, false,
-				srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
+				"USER", true, false, srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
 
-		//check if the competition has already started and whether we should allow to set participant status
+		// check if the competition has already started and whether we should allow to
+		// set participant status
 		if (rrepository.findAll().size() == 0) {
 			newUser.setIsOut(!signupForm.getIsCompetitor());
 			newUser.setIsCompetitor(signupForm.getIsCompetitor());
 		}
-		
-		repository.save(newUser);
-		this.sendVerificationEmail(newUser);
-		return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
+
+		// try sending email, if it has errors then the sign-up function isn't available
+		try {
+			this.sendVerificationEmail(newUser);
+			repository.save(newUser);
+			return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
+		} catch (MailAuthenticationException e) {
+			log.info(e.toString());
+			return new ResponseEntity<>("The smtp service authentication fail", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 	// method to verify the user's verification code and enable account
@@ -170,11 +173,17 @@ public class UserController {
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(password);
 		user.setPasswordHash(hashPwd);
-		repository.save(user);
 
-		this.sendPasswordEmail(user, password);
+		// try sending email, if it has errors then the reset password function isn't
+		// available
+		try {
+			this.sendPasswordEmail(user, password);
+			repository.save(user);
+			return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
+		} catch (MailAuthenticationException e) {
+			return new ResponseEntity<>("The smtp service authentication fail", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 
-		return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
 	}
 
 	// method to save new user created by admin
@@ -192,22 +201,22 @@ public class UserController {
 		String hashPwd = bc.encode(userForm.getPassword());
 
 		User newUser = new User(userForm.getFirstname(), userForm.getLastname(), userForm.getUsername(), hashPwd,
-				userForm.getRole(), true, false,
-				srepository.findByStage("No").get(0), userForm.getEmail(), null);
-		
-		//check if the competition has started and whether we can change a participant status
+				userForm.getRole(), true, false, srepository.findByStage("No").get(0), userForm.getEmail(), null);
+
+		// check if the competition has started and whether we can change a participant
+		// status
 		if (rrepository.findAll().size() == 0) {
 			newUser.setIsCompetitor(userForm.getIsCompetitor());
 			newUser.setIsOut(!userForm.getIsCompetitor());
 		}
-		
-		//check if admin created a verified user
+
+		// check if admin created a verified user
 		if (userForm.isVerified()) {
 			newUser.setAccountVerified(true);
 			repository.save(newUser);
 			return new ResponseEntity<>("The user was added to database", HttpStatus.OK);
 		}
-		
+
 		String randomCode = RandomString.make(64);
 		newUser.setVerificationCode(randomCode);
 		repository.save(newUser);

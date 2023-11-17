@@ -17,7 +17,7 @@ public interface RoundRepository extends CrudRepository<Round, Long> {
 	Round findRoundById(Long id);
 	
 	@Query(value="SELECT roundid, result, user1_id, user2_id, round.stageid FROM round JOIN stage ON (stage.stageid = round.stageid) WHERE stage.is_current = true ORDER BY roundid", nativeQuery = true)
-	List<Round> findPlayedCurrentRounds();
+	List<Round> findCurrentRounds();
 	
 	@Query(value="SELECT * FROM round WHERE stageid = ?1 ORDER BY roundid", nativeQuery = true)
 	List<Round> findRoundsByStage(Long stageid);

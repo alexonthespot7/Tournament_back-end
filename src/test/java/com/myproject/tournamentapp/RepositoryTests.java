@@ -17,7 +17,6 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
-
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
 class RepositoryTests {
@@ -39,9 +38,12 @@ class RepositoryTests {
 		assertThat(user.getId()).isNotNull();
 	}
 
-	// Test find by username and by email
+	// Test find by username and by email for the user repo
 	@Test
 	public void testUserByUsernameAndEmail() {
+		urepository.deleteAll(); // deleting all hardcoded users
+		assertThat(urepository.findAll()).isEmpty();
+
 		User user0 = urepository.findByUsername("usero");
 		assertThat(user0).isNull();
 
@@ -66,22 +68,39 @@ class RepositoryTests {
 		assertThat(user2.getRole()).isEqualTo("ADMIN");
 	}
 
-	// Test searching for verified and competitors functionality
+	// Test searching for verified users and competitors functionality for user repo
 	@Test
 	public void testVerifiedUsersSearch() {
+		urepository.deleteAll(); // deleting the hard-coded users
+		assertThat(urepository.findAll()).isEmpty();
+
 		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
-				"USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true, null);
+				"USER", true, false, srepository.findByStage("No").get(0), "12323mymail@gmail.com", true, null);
 		urepository.save(userCr1);
-		
+		User userCr2 = new User("Me2", "user2", "usero2",
+				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", false, true,
+				srepository.findByStage("No").get(0), "12332mymail@gmail.com", false, "SomeCode");
+		User userCr3 = new User("Me3", "user3", "usero3",
+				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "ADMIN", false, true,
+				srepository.findByStage("No").get(0), "12342mymail@gmail.com", true, null);
+		User userCr4 = new User("Me43", "user43", "usero43",
+				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", false, true,
+				srepository.findByStage("No").get(0), "1234212mymail@gmail.com", true, null);
+
+		urepository.save(userCr1);
+		urepository.save(userCr2);
+		urepository.save(userCr3);
+		urepository.save(userCr4);
+
 		List<User> verifiedUsers = urepository.findAllVerifiedUsers();
-		assertThat(verifiedUsers.size()).isNotZero();
+		assertThat(verifiedUsers).hasSize(2);
 
 		for (User user : verifiedUsers) {
 			assertThat(user.isAccountVerified()).isEqualTo(true);
 		}
 
 		List<User> competitors = urepository.findAllCompetitors();
-		assertThat(competitors.size()).isNotZero();
+		assertThat(competitors).hasSize(1);
 
 		for (User user : competitors) {
 			assertThat(user.getIsCompetitor()).isEqualTo(true);
@@ -92,6 +111,9 @@ class RepositoryTests {
 	// Test deletion for user repo
 	@Test
 	public void deleteUserTest() {
+		urepository.deleteAll(); // deleting all hard-coded users
+		assertThat(urepository.findAll()).isEmpty();
+
 		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
 				"USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true, null);
 		urepository.save(userCr1);
@@ -104,6 +126,9 @@ class RepositoryTests {
 	// Test Create Functionality for stage repository
 	@Test
 	public void testCreationStage() {
+		srepository.deleteAll(); // deleting all hard-coded stages
+		assertThat(srepository.findAll()).isEmpty();
+
 		Stage stage = new Stage("1/4", true);
 		srepository.save(stage);
 		assertThat(stage.getStageid()).isNotNull();
@@ -112,8 +137,12 @@ class RepositoryTests {
 	// Test delete functionality for stage repository
 	@Test
 	public void testDeletionStage() {
-		Stage stage = srepository.findByStage("No").get(0);
-		srepository.delete(stage);
+		srepository.deleteAll(); // deleting all hard-coded stages
+		assertThat(srepository.findAll()).isEmpty();
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+		srepository.delete(stageNo);
 		List<Stage> stages = srepository.findByStage("No");
 		assertThat(stages).hasSize(0);
 
@@ -128,27 +157,51 @@ class RepositoryTests {
 	// Test seacrhing functions of stage repository
 	@Test
 	public void testSearchStage() {
+		srepository.deleteAll(); // deleting all hard-coded stages
+		assertThat(srepository.findAll()).isEmpty();
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
 		List<Stage> stages = srepository.findByStage("No");
 		assertThat(stages).hasSize(1);
+		
+		List<Stage> stages2 = srepository.findByStage("1/2");
+		assertThat(stages2).hasSize(0);
+	}
+	
+	//creation functionality checking for the round repo
+	@Test
+	public void creationTestsRounds() {
+		rrepository.deleteAll(); //deleting all hard-coded rounds
+		
+		rrepository.save(new Round("No", srepository.findByStage("No").get(0)));
+		assertThat(rrepository.findAll()).isNotEmpty();
 	}
 
 	// check round repository findAll function
 	@Test
 	public void testFindAllRounds() {
+		rrepository.deleteAll(); //deleting all hard-coded rounds
+		assertThat(rrepository.findAll()).isEmpty();
+
 		List<Round> allRounds = rrepository.findAll();
 		assertThat(allRounds).hasSize(0);
 		rrepository.save(new Round("No", srepository.findByStage("No").get(0)));
+		rrepository.save(new Round("No", srepository.findByStage("No").get(0)));
 		allRounds = rrepository.findAll();
-		assertThat(allRounds).hasSize(1);
+		assertThat(allRounds).hasSize(2);
 	}
 
-	// Test delete and creation functions for round repo:
+	// Test delete functionality for round repo:
 	@Test
-	public void testDeleteCreateRound() {
+	public void testDeleteRound() {
+		rrepository.deleteAll(); //deleting all hard-coded rounds
+		assertThat(rrepository.findAll()).isEmpty();
+
 		rrepository.save(new Round("No", srepository.findByStage("No").get(0)));
-		assertThat(rrepository.findAll().size()).isNotZero();
+		assertThat(rrepository.findAll()).isNotEmpty();
 		Round round = rrepository.findRoundsByStage(srepository.findByStage("No").get(0).getStageid()).get(0);
 		rrepository.delete(round);
-		assertThat(rrepository.findAll()).hasSize(0);
+		assertThat(rrepository.findAll()).isEmpty();
 	}
 }

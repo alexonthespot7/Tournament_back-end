@@ -7,15 +7,14 @@ import java.util.Optional;
 
 import javax.transaction.Transactional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.myproject.tournamentapp.MyUser;
-import com.myproject.tournamentapp.forms.AddUserFormForAdmin;
 import com.myproject.tournamentapp.forms.BracketPageInfo;
 import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
@@ -41,7 +39,7 @@ import com.myproject.tournamentapp.model.UserRepository;
 
 @RestController
 public class MainController {
-	private static final Logger log = LoggerFactory.getLogger(MainController.class);
+//	private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
 	@Autowired
 	private UserRepository urepository;
@@ -51,6 +49,13 @@ public class MainController {
 
 	@Autowired
 	private RoundRepository rrepository;
+	
+	//method to test testing mechaniques:
+	@RequestMapping(value = "/roundsquantitytest", method = RequestMethod.GET)
+	public @ResponseBody String getRoundsPublicQuantity() {
+		int roundQuantity = rrepository.findAll().size();
+		return String.valueOf(roundQuantity);
+	}
 
 	// Method to send the quantity of the rounds to the main page to conditionally
 	// render buttons
@@ -573,62 +578,84 @@ public class MainController {
 
 	// Confirm current stage results functionality for admin and activate the new
 	// stage
-	@RequestMapping(value = "/admin/confirmstageresults", method = RequestMethod.POST)
+	@RequestMapping(value = "/admin/confirmresults", method = RequestMethod.POST)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public String nextStage() {
-		// checking if if is the situation to confirm stage results
-		int playedRoundshere = rrepository.quantityOfPlayedInCurrentStage();
-		int allCurrRoundshere = rrepository.findQuantityOfGamesInCurrentStage();
-		boolean stageStatus = playedRoundshere == allCurrRoundshere
-				&& !srepository.findCurrentStage().getStage().equals("No");
-		if (stageStatus && rrepository.findAll().size() > 0) {
-			int playedRounds = rrepository.quantityOfPlayedInCurrentStage();
-			int allCurrRounds = rrepository.findQuantityOfGamesInCurrentStage();
-			if (playedRounds == allCurrRounds) {
-				Stage currStageBefore = playedRounds > 1 ? srepository.findByStage("1/" + playedRounds).get(0)
-						: srepository.findByStage("final").get(0);
-				Stage currStage;
-				if (playedRounds > 2) {
-					currStage = srepository.findByStage("1/" + playedRounds / 2).get(0);
-				} else if (playedRounds == 2) {
-					currStage = srepository.findByStage("final").get(0);
-				} else {
-					currStage = srepository.findByStage("No").get(0);
-				}
-				currStageBefore.setIsCurrent(false);
-				currStage.setIsCurrent(true);
-				srepository.save(currStageBefore);
-				srepository.save(currStage);
-
-				// populating games of next stage with winners of current stage:
-				if (playedRounds > 1) {
-					List<Round> currentRounds = rrepository.findPlayedCurrentRounds();
-					List<Round> previousRounds = rrepository.findRoundsByStage(currStageBefore.getStageid());
-
-					Round currRound;
-					User player1;
-					User player2;
-					for (int i = 0; i < currentRounds.size(); i++) {
-						currRound = currentRounds.get(i);
-						player1 = urepository.findByUsername(previousRounds.get(i * 2).getResult().substring(0,
-								previousRounds.get(i * 2).getResult().indexOf(" ")));
-						player2 = urepository.findByUsername(previousRounds.get(i * 2 + 1).getResult().substring(0,
-								previousRounds.get(i * 2 + 1).getResult().indexOf(" ")));
-
-						currRound.setUser1(player1);
-						player1.setStage(currStage);
-
-						currRound.setUser2(player2);
-						player2.setStage(currStage);
-
-						rrepository.save(currRound);
-						urepository.save(player1);
-						urepository.save(player2);
-					}
-				}
-			}
+	public ResponseEntity<?> confirmStageResults() {
+		int playedRoundsInCurrent = rrepository.quantityOfPlayedInCurrentStage();
+		int allCurrRoundsInCurrent = rrepository.findQuantityOfGamesInCurrentStage();	
+		
+		// If the played rounds in the current stage amount equals to the all current stage rounds and the current stage is not 'No' stage
+		boolean isCurrentStageFinished = playedRoundsInCurrent == allCurrRoundsInCurrent
+						&& !srepository.findCurrentStage().getStage().equals("No");
+		
+		if (!isCurrentStageFinished) return new ResponseEntity<>("Cannot confirm stage results, untill all the rounds results are saved", HttpStatus.NOT_ACCEPTABLE);
+		
+		//finding the current stage, that should be processed and making this stage no more current
+		Stage stageToFinnish = srepository.findCurrentStage();
+		
+		//finding the next stage based on the played rounds quantity and making this stage current
+		Stage newCurrentStage;
+		
+		if (playedRoundsInCurrent > 2) {
+			newCurrentStage = srepository.findByStage("1/" + playedRoundsInCurrent / 2).get(0);
+		} else if (playedRoundsInCurrent == 2) {
+			newCurrentStage = srepository.findByStage("final").get(0);
+		} else {
+			newCurrentStage = srepository.findByStage("No").get(0);
 		}
-		return "redirect:rounds";
+		stageToFinnish.setIsCurrent(false);
+		newCurrentStage.setIsCurrent(true);
+		srepository.save(stageToFinnish);
+		srepository.save(newCurrentStage);
+
+		// if the stage was a final one, there is no need to populate any more rounds with the users
+		if (playedRoundsInCurrent == 1) return new ResponseEntity<>("The final stage resluts were successfully confirmed", HttpStatus.OK);
+			
+		// populating rounds of the next stage with winners of current stage (if it wasn't a final round):
+		
+		// receiving the list of the rounds of the new stage (to populate them)
+		List<Round> currentRounds = rrepository.findCurrentRounds();
+		//receiving the list of the rounds of the previous stage to get winners;
+		List<Round> previousRounds = rrepository.findRoundsByStage(stageToFinnish.getStageid());
+
+		//declaring the variables to be handled in the cycle
+		Round currentRound;
+		String result1;
+		String result2;
+		
+		String usernameOfWinner1;
+		String usernameOfWinner2;
+		
+		User player1;
+		User player2;
+		
+		for (int i = 0; i < currentRounds.size(); i++) {
+			currentRound = currentRounds.get(i);
+			
+			//receiving the results of the previous rounds
+			result1 = previousRounds.get(i * 2).getResult();
+			result2 = previousRounds.get(i * 2 + 1).getResult();
+			
+			//Assuming the result is stored in the format of <Username> <'win'/'autowin'>, the username can be received by spliting the string with whitespace
+			usernameOfWinner1 = result1.substring(0, result1.indexOf(" "));
+			usernameOfWinner2 = result2.substring(0, result2.indexOf(" "));
+			
+			player1 = urepository.findByUsername(usernameOfWinner1);
+			player2 = urepository.findByUsername(usernameOfWinner2);
+
+			//assigning players to the round and changing the current stage of the player;
+			currentRound.setUser1(player1);
+			player1.setStage(newCurrentStage);
+
+			currentRound.setUser2(player2);
+			player2.setStage(newCurrentStage);
+
+			rrepository.save(currentRound);
+			urepository.save(player1);
+			urepository.save(player2);
+		}
+		
+		return new ResponseEntity<>("The current stage results were successfully confirmed", HttpStatus.OK);
 	}
 
 }
