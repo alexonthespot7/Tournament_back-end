@@ -80,7 +80,7 @@ public class RestServicesTests {
                 + "\"isCompetitor\": true, "
                 + "\"username\": \"john_doe\", "
                 + "\"password\": \"taylorswift\", "
-                + "\"email\": \"john.doe@example.com\""
+                + "\"email\": \"aleksei.shevelenkov@gmail.com\""
                 + "}";
 		
 		Response response = RestAssured.given()

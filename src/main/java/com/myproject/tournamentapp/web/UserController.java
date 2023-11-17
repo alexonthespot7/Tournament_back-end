@@ -128,11 +128,10 @@ public class UserController {
 
 		// try sending email, if it has errors then the sign-up function isn't available
 		try {
-			this.sendVerificationEmail(newUser);
 			repository.save(newUser);
+			this.sendVerificationEmail(newUser);
 			return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
 		} catch (MailAuthenticationException e) {
-			log.info(e.toString());
 			return new ResponseEntity<>("The smtp service authentication fail", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
