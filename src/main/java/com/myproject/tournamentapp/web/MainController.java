@@ -102,10 +102,11 @@ public class MainController {
 
 		List<Round> allRounds = user.getRounds1();
 		allRounds.addAll(user.getRounds2());
+		
+		List<RoundPublicInfo> publicUserRounds = makeRoundsPublic(allRounds);
 
-		PersonalInfo personalInfoInstance = new PersonalInfo(user.getFirstname(), user.getLastname(),
-				user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(),
-				user.getIsCompetitor(), allRounds);
+		PersonalInfo personalInfoInstance = new PersonalInfo(user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(),
+				user.getIsCompetitor(), publicUserRounds);
 
 		return personalInfoInstance;
 	}
@@ -123,8 +124,6 @@ public class MainController {
 
 		User user = optionalUser.get();
 
-		user.setFirstname(personalInfo.getFirstname());
-		user.setLastname(personalInfo.getLastname());
 		user.setUsername(personalInfo.getUsername());
 
 		if (rrepository.findAll().size() == 0) {
@@ -144,20 +143,8 @@ public class MainController {
 		if (allRounds.isEmpty())
 			return null; // return null if the bracket wasn't made yet
 
-		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
-		RoundPublicInfo publicRound;
-		// In round entity one of the competitor can be null, so I need to handle it as
-		// well
-		String username1;
-		String username2;
-
-		for (Round round : allRounds) {
-			username1 = round.getUser1() == null ? null : round.getUser1().getUsername();
-			username2 = round.getUser2() == null ? null : round.getUser2().getUsername();
-			publicRound = new RoundPublicInfo(username1, username2, round.getStage().getStage(), round.getResult());
-			allPublicRounds.add(publicRound);
-		}
-
+		List<RoundPublicInfo> allPublicRounds = makeRoundsPublic(allRounds);
+		
 		return allPublicRounds;
 	}
 
@@ -170,13 +157,7 @@ public class MainController {
 		if (allRounds.isEmpty())
 			return null; // return null if the bracket wasn't made yet
 
-		List<RoundPublicInfo> allPublicRounds = new ArrayList<>();
-		RoundPublicInfo publicRound;
-		for (Round round : allRounds) {
-			publicRound = new RoundPublicInfo(round.getUser1().getUsername(), round.getUser2().getUsername(),
-					round.getStage().getStage(), round.getResult());
-			allPublicRounds.add(publicRound);
-		}
+		List<RoundPublicInfo> allPublicRounds = makeRoundsPublic(allRounds);
 
 		List<Stage> allStages = srepository.findAllStages();
 
@@ -261,8 +242,6 @@ public class MainController {
 		if (updatedUser.getId() != currentUser.getId())
 			return new ResponseEntity<>("User id missmatch in request bady and path", HttpStatus.CONFLICT);
 
-		currentUser.setFirstname(updatedUser.getFirstname());
-		currentUser.setLastname(updatedUser.getLastname());
 		currentUser.setUsername(updatedUser.getUsername());
 		currentUser.setRole(updatedUser.getRole());
 		if (updatedUser.isAccountVerified() && !currentUser.isAccountVerified()) {
@@ -656,6 +635,25 @@ public class MainController {
 		}
 		
 		return new ResponseEntity<>("The current stage results were successfully confirmed", HttpStatus.OK);
+	}
+	
+	//method for restricting the list of rounds, which by default contains user's info 
+	private List<RoundPublicInfo> makeRoundsPublic(List<Round> rounds) {
+		List<RoundPublicInfo> publicRounds = new ArrayList<>();
+		RoundPublicInfo publicRound;
+		// In round entity one of the competitor can be null, so I need to handle it as
+		// well
+		String username1;
+		String username2;
+
+		for (Round round : rounds) {
+			username1 = round.getUser1() == null ? null : round.getUser1().getUsername();
+			username2 = round.getUser2() == null ? null : round.getUser2().getUsername();
+			publicRound = new RoundPublicInfo(username1, username2, round.getStage().getStage(), round.getResult());
+			publicRounds.add(publicRound);
+		}
+		
+		return publicRounds;
 	}
 
 }

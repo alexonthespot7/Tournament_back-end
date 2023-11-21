@@ -24,10 +24,10 @@ public class TournamentApplication {
 			Stage stageNo = new Stage("No", true);
 			stageRepository.save(stageNo);
 			
-			User userAdmin = new User("Aleksei", "Shevelenkov", "axosinc", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "ADMIN", true, false, stageRepository.findByStage("No").get(0), "aleksei2.shevelenkov@gmail.com", true, null);
-			User user1 = new User("Dan", "Reynolds", "danrey", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false, true, stageRepository.findByStage("No").get(0), "bgw2595@myy.haaga-helia.fi", true, null);
-			User user2 = new User("Wayne", "Sermon", "wanyeser", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false, true, stageRepository.findByStage("No").get(0), "mrbudach2@mail.ru", true, null);
-			User user = new User("Login", "Test", "loginTest", "$2a$12$19lxeD0nHwNrMxnGhWFNoOLMC/xOxd81ug1D.fboYQeoRHjyR9hym",
+			User userAdmin = new User("axosinc", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "ADMIN", true, false, stageRepository.findByStage("No").get(0), "aleksei2.shevelenkov@gmail.com", true, null);
+			User user1 = new User("danrey", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false, true, stageRepository.findByStage("No").get(0), "bgw2595@myy.haaga-helia.fi", true, null);
+			User user2 = new User("wanyeser", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false, true, stageRepository.findByStage("No").get(0), "mrbudach2@mail.ru", true, null);
+			User user = new User("loginTest", "$2a$12$19lxeD0nHwNrMxnGhWFNoOLMC/xOxd81ug1D.fboYQeoRHjyR9hym",
 					"USER", true, false, stageRepository.findByStage("No").get(0), "login.test@gmail.com", true, null); //creating verified user with login loginTest and password taylorswift
 			uRepository.save(user);
 			uRepository.save(userAdmin);

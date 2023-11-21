@@ -32,7 +32,7 @@ class RepositoryTests {
 	// test Create for User repo:
 	@Test
 	public void testUserCreation() {
-		User user = new User("Me", "user", "usersdso", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
+		User user = new User("usersdso", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
 				"USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true, null);
 		urepository.save(user);
 		assertThat(user.getId()).isNotNull();
@@ -50,7 +50,7 @@ class RepositoryTests {
 		User user00 = urepository.findByEmail("mymailss@gmail.com");
 		assertThat(user00).isNull();
 
-		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
+		User userCr1 = new User("usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
 				"USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true, null);
 		urepository.save(userCr1);
 
@@ -58,7 +58,7 @@ class RepositoryTests {
 		assertThat(user).isNotNull();
 		assertThat(user.getRole()).isEqualTo("USER");
 
-		User userCr2 = new User("Me", "user", "usersdso",
+		User userCr2 = new User("usersdso",
 				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "ADMIN", true, false,
 				srepository.findByStage("No").get(0), "mymailss@gmail.com", true, null);
 		urepository.save(userCr2);
@@ -74,16 +74,16 @@ class RepositoryTests {
 		urepository.deleteAll(); // deleting the hard-coded users
 		assertThat(urepository.findAll()).isEmpty();
 
-		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
+		User userCr1 = new User("usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
 				"USER", true, false, srepository.findByStage("No").get(0), "12323mymail@gmail.com", true, null);
 		urepository.save(userCr1);
-		User userCr2 = new User("Me2", "user2", "usero2",
+		User userCr2 = new User("usero2",
 				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", false, true,
 				srepository.findByStage("No").get(0), "12332mymail@gmail.com", false, "SomeCode");
-		User userCr3 = new User("Me3", "user3", "usero3",
+		User userCr3 = new User("usero3",
 				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "ADMIN", false, true,
 				srepository.findByStage("No").get(0), "12342mymail@gmail.com", true, null);
-		User userCr4 = new User("Me43", "user43", "usero43",
+		User userCr4 = new User("usero43",
 				"$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", false, true,
 				srepository.findByStage("No").get(0), "1234212mymail@gmail.com", true, null);
 
@@ -114,7 +114,7 @@ class RepositoryTests {
 		urepository.deleteAll(); // deleting all hard-coded users
 		assertThat(urepository.findAll()).isEmpty();
 
-		User userCr1 = new User("Me", "user", "usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
+		User userCr1 = new User("usero", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6",
 				"USER", true, false, srepository.findByStage("No").get(0), "123mymail@gmail.com", true, null);
 		urepository.save(userCr1);
 

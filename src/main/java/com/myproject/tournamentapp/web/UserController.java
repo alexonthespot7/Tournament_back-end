@@ -98,7 +98,8 @@ public class UserController {
 		return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer " + jwts)
 				.header(HttpHeaders.ALLOW, secondCheckUser.getRole())
 				.header(HttpHeaders.HOST, secondCheckUser.getId().toString())
-				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization, Allow", "Host").build();
+				.header(HttpHeaders.ORIGIN, secondCheckUser.getUsername())
+				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization, Allow", "Host", "Origin").build();
 	}
 
 	// Restful method for signing-up page: creates unverified user instance and
@@ -116,7 +117,7 @@ public class UserController {
 		String hashPwd = bc.encode(signupForm.getPassword());
 		String randomCode = RandomString.make(64);
 
-		User newUser = new User(signupForm.getFirstname(), signupForm.getLastname(), signupForm.getUsername(), hashPwd,
+		User newUser = new User(signupForm.getUsername(), hashPwd,
 				"USER", true, false, srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
 
 		// check if the competition has already started and whether we should allow to
@@ -199,7 +200,7 @@ public class UserController {
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(userForm.getPassword());
 
-		User newUser = new User(userForm.getFirstname(), userForm.getLastname(), userForm.getUsername(), hashPwd,
+		User newUser = new User(userForm.getUsername(), hashPwd,
 				userForm.getRole(), true, false, srepository.findByStage("No").get(0), userForm.getEmail(), null);
 
 		// check if the competition has started and whether we can change a participant

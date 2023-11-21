@@ -2,44 +2,22 @@ package com.myproject.tournamentapp.forms;
 
 import java.util.List;
 
-import com.myproject.tournamentapp.model.Round;
-
 public class PersonalInfo {
-	private String firstname;
-	private String lastname;
 	private String username;
 	private String email;
 	private boolean isOut;
 	private String stage;
 	private boolean isCompetitor;
-	private List<Round> rounds;
+	private List<RoundPublicInfo> publicRounds;
 	
-	public PersonalInfo(String firstname, String lastname, String username, String email, boolean isOut, String stage,
-			boolean isCompetitor, List<Round> rounds) {
-		this.firstname = firstname;
-		this.lastname = lastname;
+	public PersonalInfo(String username, String email, boolean isOut, String stage,
+			boolean isCompetitor, List<RoundPublicInfo> publicRounds) {
 		this.username = username;
 		this.email = email;
 		this.isOut = isOut;
 		this.stage = stage;
 		this.isCompetitor = isCompetitor;
-		this.rounds = rounds;
-	}
-
-	public String getFirstname() {
-		return firstname;
-	}
-
-	public void setFirstname(String firstname) {
-		this.firstname = firstname;
-	}
-
-	public String getLastname() {
-		return lastname;
-	}
-
-	public void setLastname(String lastname) {
-		this.lastname = lastname;
+		this.publicRounds = publicRounds;
 	}
 
 	public String getUsername() {
@@ -82,11 +60,11 @@ public class PersonalInfo {
 		this.isCompetitor = isCompetitor;
 	}
 
-	public List<Round> getRounds() {
-		return rounds;
+	public List<RoundPublicInfo> getPublicRounds() {
+		return publicRounds;
 	}
 
-	public void setRounds(List<Round> rounds) {
-		this.rounds = rounds;
+	public void setRounds(List<RoundPublicInfo> rounds) {
+		this.publicRounds = publicRounds;
 	}
 }

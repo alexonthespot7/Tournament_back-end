@@ -42,12 +42,16 @@ public class RestServicesTests {
 		String authorizationHeader = response.getHeader("Authorization"); // jwt token
 		String allowHeader = response.getHeader("Allow"); //role of the user
 		String hostHeader = response.getHeader("Host"); //id of the user
+		String originHeader = response.getHeader("Origin"); //username of the user
 		
 		assertThat(authorizationHeader).isNotNull();
 		assertThat(authorizationHeader).contains("Bearer ");
 		
 		assertThat(allowHeader).isNotNull();
 		assertThat(allowHeader).isEqualTo("USER");
+		
+		assertThat(originHeader).isNotNull();
+		assertThat(originHeader).isEqualTo("loginTest");
 		
 		assertThat(hostHeader).isNotNull();
 		
@@ -89,6 +93,8 @@ public class RestServicesTests {
 				.post(HOST + "/signup");
 		
 		assertThat(response.getStatusCode()).isEqualTo(200);
+		
+		
     }
 	
 }
