@@ -8,15 +8,17 @@ public class PersonalInfo {
 	private boolean isOut;
 	private String stage;
 	private boolean isCompetitor;
+	private int roundsQuantity; //if the total rounds quantity is 0, then the bracket wasn't made yet
 	private List<RoundPublicInfo> publicRounds;
 	
 	public PersonalInfo(String username, String email, boolean isOut, String stage,
-			boolean isCompetitor, List<RoundPublicInfo> publicRounds) {
+			boolean isCompetitor, int roundsQuantity, List<RoundPublicInfo> publicRounds) {
 		this.username = username;
 		this.email = email;
 		this.isOut = isOut;
 		this.stage = stage;
 		this.isCompetitor = isCompetitor;
+		this.roundsQuantity = roundsQuantity;
 		this.publicRounds = publicRounds;
 	}
 
@@ -60,11 +62,19 @@ public class PersonalInfo {
 		this.isCompetitor = isCompetitor;
 	}
 
+	public int getRoundsQuantity() {
+		return roundsQuantity;
+	}
+
+	public void setRoundsQuantity(int roundsQuantity) {
+		this.roundsQuantity = roundsQuantity;
+	}
+
 	public List<RoundPublicInfo> getPublicRounds() {
 		return publicRounds;
 	}
 
-	public void setRounds(List<RoundPublicInfo> rounds) {
+	public void setPublicRounds(List<RoundPublicInfo> publicRounds) {
 		this.publicRounds = publicRounds;
 	}
 }

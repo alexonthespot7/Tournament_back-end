@@ -104,9 +104,11 @@ public class MainController {
 		allRounds.addAll(user.getRounds2());
 		
 		List<RoundPublicInfo> publicUserRounds = makeRoundsPublic(allRounds);
+		
+		int roundsQuantity = rrepository.findAll().size();
 
 		PersonalInfo personalInfoInstance = new PersonalInfo(user.getUsername(), user.getEmail(), user.getIsOut(), user.getStage().getStage(),
-				user.getIsCompetitor(), publicUserRounds);
+				user.getIsCompetitor(),roundsQuantity, publicUserRounds);
 
 		return personalInfoInstance;
 	}
