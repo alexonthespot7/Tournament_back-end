@@ -29,6 +29,7 @@ import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
 import com.myproject.tournamentapp.forms.PersonalInfo;
 import com.myproject.tournamentapp.forms.RoundPublicInfo;
 import com.myproject.tournamentapp.forms.RoundsForAdminForm;
+import com.myproject.tournamentapp.forms.StageForBracketInfo;
 import com.myproject.tournamentapp.forms.UsersPageAdminForm;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
@@ -151,7 +152,7 @@ public class MainController {
 	}
 
 	// method to send stages and rounds public info and winner (if exists) for the
-	// bracket page
+	// bracket page: each stage has the list of its rounds;
 	@RequestMapping(value = "/bracket", method = RequestMethod.GET)
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody BracketPageInfo getBracketInfo() {
@@ -159,9 +160,22 @@ public class MainController {
 		if (allRounds.isEmpty())
 			return null; // return null if the bracket wasn't made yet
 
-		List<RoundPublicInfo> allPublicRounds = makeRoundsPublic(allRounds);
-
+		//all stages except for 'no' stage
 		List<Stage> allStages = srepository.findAllStages();
+		
+		// The list of stages which would include the stage's rounds
+		List<StageForBracketInfo> stagesWithRounds = new ArrayList<>();
+		StageForBracketInfo stageWithRounds;
+		
+		// The variable to hold the list of public rounds info:
+		List<RoundPublicInfo> currentStagePublicRounds;
+		
+		for (Stage stage : allStages) {
+			currentStagePublicRounds = makeRoundsPublic(rrepository.findRoundsByStage(stage.getStageid()));
+			
+			stageWithRounds = new StageForBracketInfo(stage.getStage(), stage.getIsCurrent(), currentStagePublicRounds);
+			stagesWithRounds.add(stageWithRounds);
+		}
 
 		String winner = "";
 
@@ -174,7 +188,7 @@ public class MainController {
 			}
 		}
 
-		BracketPageInfo bracketInfo = new BracketPageInfo(allStages, allPublicRounds, winner);
+		BracketPageInfo bracketInfo = new BracketPageInfo(stagesWithRounds, winner);
 
 		return bracketInfo;
 	}
