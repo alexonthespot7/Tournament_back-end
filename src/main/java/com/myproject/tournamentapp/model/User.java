@@ -12,6 +12,10 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -23,12 +27,17 @@ public class User {
 	@Column(name = "id", nullable = false, updatable = false)
 	private Long id;
 
+	@NotBlank(message = "Username is mandatory")
+    @Size(max = 15, message = "Username must be less than or equal to 15 characters")
+    @Pattern(regexp = "\\S+", message = "Username cannot contain whitespace")
 	@Column(name = "username", nullable = false, unique = true)
 	private String username;
 
+	@NotBlank(message = "Password is mandatory")
 	@Column(name = "password", nullable = false)
 	private String passwordHash;
 
+    @NotBlank(message = "Role is mandatory")
 	@Column(name = "role", nullable = false)
 	private String role;
 
@@ -38,10 +47,8 @@ public class User {
 	@Column(name = "isCompetitor", nullable = false)
 	private boolean isCompetitor;
 
-	@ManyToOne
-	@JoinColumn(name = "stageid")
-	private Stage stage;
-
+    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email is mandatory")
 	@Column(name = "email", nullable = false, unique = true)
 	private String email;
 
@@ -49,6 +56,10 @@ public class User {
 	private String verificationCode;
 
 	private boolean accountVerified;
+	
+	@ManyToOne
+	@JoinColumn(name = "stageid")
+	private Stage stage;
 
 	@JsonIgnore
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user1")

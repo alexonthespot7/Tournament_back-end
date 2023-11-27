@@ -2,9 +2,9 @@ package com.myproject.tournamentapp.web;
 
 import java.io.UnsupportedEncodingException;
 
-import javax.mail.AuthenticationFailedException;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
+import javax.validation.Valid;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,7 +105,7 @@ public class UserController {
 	// Restful method for signing-up page: creates unverified user instance and
 	// sends mail with verification link to the users' email
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
-	public ResponseEntity<?> signUp(@RequestBody SignupForm signupForm)
+	public ResponseEntity<?> signUp(@Valid @RequestBody SignupForm signupForm)
 			throws UnsupportedEncodingException, MessagingException {
 		// check if the username or email are already in use
 		if (repository.findByEmail(signupForm.getEmail()) != null)

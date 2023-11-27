@@ -61,7 +61,6 @@ public class MainController {
 	// Method to send the quantity of the rounds to the main page to conditionally
 	// render buttons
 	@RequestMapping(value = "/roundsquantity", method = RequestMethod.GET)
-	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody String getRoundsQuantity() {
 		int roundQuantity = rrepository.findAll().size();
 
@@ -671,5 +670,4 @@ public class MainController {
 		
 		return publicRounds;
 	}
-
 }

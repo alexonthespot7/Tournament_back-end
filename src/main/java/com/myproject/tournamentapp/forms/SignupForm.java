@@ -1,13 +1,24 @@
 package com.myproject.tournamentapp.forms;
 
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
+
 public class SignupForm {
 
 	private boolean isCompetitor;
 
+    @Size(max = 15, message = "Username must be less than or equal to 15 characters")
+    @Pattern(regexp = "\\S+", message = "Username cannot contain whitespace")
+	@NotBlank(message = "Username is mandatory")
     private String username;
 
+	@NotBlank(message = "Password is mandatory")
     private String password;
     
+    @NotBlank(message = "Email is mandatory")
+    @Email(message = "Invalid email format")
     private String email;
 	
 	public boolean getIsCompetitor() {
