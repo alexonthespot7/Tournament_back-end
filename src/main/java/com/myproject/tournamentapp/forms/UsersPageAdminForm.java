@@ -9,13 +9,15 @@ public class UsersPageAdminForm {
 	private boolean showMakeBracket;
 	private boolean showMakeAllCompetitors;
 	private boolean showReset;
+	private boolean isBracketMade;
 	
 	public UsersPageAdminForm(List<User> users, boolean showMakeBracket, boolean showMakeAllCompetitors,
-			boolean showReset) {
+			boolean showReset, boolean isBracketMade) {
 		this.users = users;
 		this.showMakeBracket = showMakeBracket;
 		this.showMakeAllCompetitors = showMakeAllCompetitors;
 		this.showReset = showReset;
+		this.isBracketMade = isBracketMade;
 	}
 	
 	public List<User> getUsers() {
@@ -42,4 +44,13 @@ public class UsersPageAdminForm {
 	public void setShowReset(boolean showReset) {
 		this.showReset = showReset;
 	}
+
+	public boolean isBracketMade() {
+		return isBracketMade;
+	}
+
+	public void setBracketMade(boolean isBracketMade) {
+		this.isBracketMade = isBracketMade;
+	}
+	
 }

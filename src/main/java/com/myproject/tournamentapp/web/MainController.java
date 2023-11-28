@@ -7,8 +7,8 @@ import java.util.Optional;
 
 import javax.transaction.Transactional;
 
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +40,7 @@ import com.myproject.tournamentapp.model.UserRepository;
 
 @RestController
 public class MainController {
-//	private static final Logger log = LoggerFactory.getLogger(MainController.class);
+	private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
 	@Autowired
 	private UserRepository urepository;
@@ -240,7 +240,7 @@ public class MainController {
 		// reset can be activated only if there was a bracket made already
 		boolean showReset = isBracketMade;
 
-		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset);
+		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset, isBracketMade);
 	}
 
 	// method to edit user's info by admin
@@ -258,7 +258,12 @@ public class MainController {
 			return new ResponseEntity<>("User id missmatch in request bady and path", HttpStatus.CONFLICT);
 
 		currentUser.setUsername(updatedUser.getUsername());
-		currentUser.setRole(updatedUser.getRole());
+		currentUser.setEmail(updatedUser.getEmail());
+		
+		if (!currentUser.getRole().equals("ADMIN")) {
+			currentUser.setRole(updatedUser.getRole());
+		}
+		
 		if (updatedUser.isAccountVerified() && !currentUser.isAccountVerified()) {
 			currentUser.setAccountVerified(true);
 			currentUser.setVerificationCode(null);
@@ -478,6 +483,7 @@ public class MainController {
 		// the amount of total stages = log2 (firstStageRoundsQuantity * 2)
 		int totalStages = (int) (Math.log(2 * firstStageRoundsQuantity) / Math.log(2));
 
+
 		// making the No stage not the current one, because it was by default before
 		Stage noStage = srepository.findCurrentStage();
 		noStage.setIsCurrent(false);
@@ -491,7 +497,7 @@ public class MainController {
 		srepository.save(currentStage);
 
 		// Create and save the remaining stages
-		for (int stageNumber = totalStages - 1; stageNumber > 0; stageNumber--) {
+		for (int stageNumber = totalStages - 1; stageNumber > 1; stageNumber--) {
 			String stageName = "1/" + (int) Math.pow(2, stageNumber - 1);
 			srepository.save(new Stage(stageName));
 		}
