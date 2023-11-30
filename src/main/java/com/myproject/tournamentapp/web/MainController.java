@@ -126,8 +126,6 @@ public class MainController {
 
 		User user = optionalUser.get();
 
-		user.setUsername(personalInfo.getUsername());
-
 		if (rrepository.findAll().size() == 0) {
 			user.setIsCompetitor(personalInfo.isCompetitor());
 			user.setIsOut(!personalInfo.isCompetitor());
