@@ -42,7 +42,7 @@ import net.bytebuddy.utility.RandomString;
 public class UserController {
 	private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
-	public static final String FRONT_END_URL = "http://localhost:3000";
+	public static final String FRONT_END_URL = "https://tournament-axos.netlify.app";
 
 	@Autowired
 	private UserRepository repository;
@@ -166,7 +166,7 @@ public class UserController {
 					HttpStatus.BAD_REQUEST);
 		if (!user.isAccountVerified())
 			return new ResponseEntity<>("User with this email (" + emailForm.getEmail() + ") is not verified",
-					HttpStatus.UNAUTHORIZED);
+					HttpStatus.CONFLICT);
 
 		String password = RandomString.make(15);
 
