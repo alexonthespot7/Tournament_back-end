@@ -15,7 +15,7 @@ public class AddUserFormForAdmin extends SignupForm {
 		this.role = role;
 	}
 
-	public boolean isVerified() {
+	public boolean getIsVerified() {
 		return isVerified;
 	}
 

@@ -209,9 +209,10 @@ public class UserController {
 			newUser.setIsCompetitor(userForm.getIsCompetitor());
 			newUser.setIsOut(!userForm.getIsCompetitor());
 		}
-
+		
+		
 		// check if admin created a verified user
-		if (userForm.isVerified()) {
+		if (userForm.getIsVerified()) {
 			newUser.setAccountVerified(true);
 			repository.save(newUser);
 			return new ResponseEntity<>("The user was added to database", HttpStatus.OK);

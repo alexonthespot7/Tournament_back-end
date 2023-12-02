@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.myproject.tournamentapp.MyUser;
 import com.myproject.tournamentapp.forms.BracketPageInfo;
@@ -92,13 +93,13 @@ public class MainController {
 
 		// double check authentication
 		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
-			return null;
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 
 		MyUser myUserInstance = (MyUser) auth.getPrincipal();
 		User user = urepository.findByUsername(myUserInstance.getUsername());
 
 		if (user == null || user.getId() != userId)
-			return null;
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have an access to this page");
 
 		List<Round> allRounds = user.getRounds1();
 		allRounds.addAll(user.getRounds2());
@@ -141,7 +142,7 @@ public class MainController {
 	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
 		List<Round> allRounds = rrepository.findAllCurrentAndPlayed();
 		if (allRounds.isEmpty())
-			return null; // return null if the bracket wasn't made yet
+			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
 
 		List<RoundPublicInfo> allPublicRounds = makeRoundsPublic(allRounds);
 		
@@ -155,7 +156,7 @@ public class MainController {
 	public @ResponseBody BracketPageInfo getBracketInfo() {
 		List<Round> allRounds = rrepository.findAll();
 		if (allRounds.isEmpty())
-			return null; // return null if the bracket wasn't made yet
+			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
 
 		//all stages except for 'no' stage
 		List<Stage> allStages = srepository.findAllStages();
@@ -253,7 +254,7 @@ public class MainController {
 		User currentUser = optionalCurrentUser.get();
 
 		if (updatedUser.getId() != currentUser.getId())
-			return new ResponseEntity<>("User id missmatch in request bady and path", HttpStatus.CONFLICT);
+			return new ResponseEntity<>("There is a user id missmatch in request body and path", HttpStatus.CONFLICT);
 
 		currentUser.setUsername(updatedUser.getUsername());
 		currentUser.setEmail(updatedUser.getEmail());
@@ -288,7 +289,7 @@ public class MainController {
 		// user can be deleted only if the bracket wasn't made yet or the user is not a
 		// competitor and the role of the user is not ADMIN
 		if (user.getRole() == "ADMIN")
-			return new ResponseEntity<>("You cannot delete ADMIN", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("You cannot delete ADMIN", HttpStatus.CONFLICT);
 
 		if (rrepository.findAll().size() > 0 && user.getIsCompetitor())
 			return new ResponseEntity<>("The competitor cannot be deleted after the competition has started",
@@ -313,7 +314,7 @@ public class MainController {
 		List<Round> allRounds = rrepository.findAll();
 
 		if (allRounds.isEmpty())
-			return null;
+			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
 
 		// Checking, if all the games in a current stage were played to allow admin to
 		// confirm stage results
@@ -349,8 +350,8 @@ public class MainController {
 
 		if (localRound.getUser1() == null || localRound.getUser2() == null)
 			return new ResponseEntity<>("The rounds with only one user shouldn't be handled by admin",
-					HttpStatus.UNAUTHORIZED);
-
+					HttpStatus.CONFLICT);
+		
 		localRound.setResult(round.getResult());
 		rrepository.save(localRound);
 
