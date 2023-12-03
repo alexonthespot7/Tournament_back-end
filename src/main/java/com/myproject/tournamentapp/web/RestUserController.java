@@ -35,6 +35,7 @@ public class RestUserController {
 
 	@Autowired
 	private BracketService bracketService;
+	
 
 	// method to display competitors on competitors page for authorized user
 	@RequestMapping(value = "/competitors", method = RequestMethod.GET)
@@ -48,7 +49,7 @@ public class RestUserController {
 	@RequestMapping(value = "/competitors/{userid}", method = RequestMethod.GET)
 	public @ResponseBody PersonalInfo getPersonalInfoById(@PathVariable("userid") Long userId, Authentication auth) {
 
-		return getPersonalInfoById(userId, auth);
+		return userService.getPersonalInfoById(userId, auth);
 
 	}
 
