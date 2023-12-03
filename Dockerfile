@@ -4,6 +4,6 @@ RUN mvn clean package -DskipTests
 
 FROM openjdk:21-jdk-slim
 ENV SPRING_CONFIG_NAME=application
-COPY --from=build /target/cool-reads-0.0.1-SNAPSHOT.jar coolreads.jar
+COPY --from=build /target/tournamentapp-0.0.1-SNAPSHOT.jar tournamentapp.jar
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","coolreads.jar"]
+ENTRYPOINT ["java","-jar","tournamentapp.jar"]
