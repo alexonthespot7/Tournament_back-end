@@ -6,8 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.myproject.tournamentapp.web.MainController;
-import com.myproject.tournamentapp.web.UserController;
+import com.myproject.tournamentapp.web.RestAdminController;
+import com.myproject.tournamentapp.web.RestPublicController;
+import com.myproject.tournamentapp.web.RestUserController;
 
 
 //smoke testing of Chess application controller and User controller
@@ -15,19 +16,27 @@ import com.myproject.tournamentapp.web.UserController;
 class TournamentApplicationTests {
 
 	@Autowired
-	private MainController chessController;
+	private RestAdminController restAdminController;
 	
 	@Autowired
-	private UserController userController;
+	private RestUserController restUserController;
+	
+	@Autowired
+	private RestPublicController restPublicController;
 	
 	@Test
 	void contextLoads() throws Exception {
-		assertThat(chessController).isNotNull();
+		assertThat(restAdminController).isNotNull();
 	}
 	
 	@Test
 	void contextLoadsTwo() throws Exception {
-		assertThat(userController).isNotNull();
+		assertThat(restUserController).isNotNull();
+	}
+	
+	@Test
+	void contextLoadsThree() throws Exception {
+		assertThat(restPublicController).isNotNull();
 	}
 
 
