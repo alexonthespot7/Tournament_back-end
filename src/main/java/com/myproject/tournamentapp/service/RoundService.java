@@ -76,16 +76,22 @@ public class RoundService {
 			return new ResponseEntity<>("The rounds with only one user shouldn't be handled by admin",
 					HttpStatus.CONFLICT);
 
-		String result = round.getResult();
-
-		localRound.setResult(result);
-		rrepository.save(localRound);
+		String result = this.setResult(round, localRound);
 
 		// now as we are saving the results to the database and everyone is able to see
 		// the results, we should update the competitors status as well
 		updateWinnerAndLooser(result, localRound);
 
 		return new ResponseEntity<>("The round result was set successfully", HttpStatus.OK);
+	}
+	
+	private String setResult(Round round, Round localRound) {
+		String result = round.getResult();
+
+		localRound.setResult(result);
+		rrepository.save(localRound);
+		
+		return result;
 	}
 
 	private void updateWinnerAndLooser(String result, Round localRound) {

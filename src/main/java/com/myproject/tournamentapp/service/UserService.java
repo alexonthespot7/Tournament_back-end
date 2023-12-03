@@ -1,22 +1,36 @@
 package com.myproject.tournamentapp.service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.myproject.tournamentapp.forms.AddUserFormForAdmin;
+import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
+import com.myproject.tournamentapp.forms.EmailForm;
+import com.myproject.tournamentapp.forms.LoginForm;
+import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.UsersPageAdminForm;
+import com.myproject.tournamentapp.forms.VerificationCodeForm;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
@@ -34,6 +48,12 @@ public class UserService {
 
 	@Autowired
 	private StageRepository srepository;
+
+	@Autowired
+	private AuthenticationService jwtService;
+
+	@Autowired
+	private AuthenticationManager authenticationManager;
 
 	@Autowired
 	private JavaMailSender mailSender;
@@ -63,6 +83,115 @@ public class UserService {
 
 		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset, isBracketMade);
 	}
+	
+	public List<CompetitorPublicInfo> listCompetitorsPublicInfo() {
+		List<User> allUsers = urepository.findAll();
+		
+		List<CompetitorPublicInfo> allCompetitors = this.makeAllPublicCompetitors(allUsers);
+
+		return allCompetitors;
+	}
+	
+	private List<CompetitorPublicInfo> makeAllPublicCompetitors(List<User> allUsers) {
+		List<CompetitorPublicInfo> allCompetitors = new ArrayList<>();
+		CompetitorPublicInfo competitor;
+		
+		for (User user : allUsers) {
+			if (user.getIsCompetitor()) {
+				competitor = new CompetitorPublicInfo(user.getUsername(), user.getIsOut(), user.getStage().getStage());
+				allCompetitors.add(competitor);
+			}
+		}
+		
+		return allCompetitors;
+	}
+
+
+	public ResponseEntity<?> loginMethod(LoginForm credentials) {
+		User user = urepository.findByEmail(credentials.getUsername());
+
+		if (user == null) {
+			user = urepository.findByUsername(credentials.getUsername());
+			// if the user wasn't found neither by mail not by username method returns
+			// unauthorized response entity
+			if (user == null)
+				return new ResponseEntity<>("No user was found for the provided username/email",
+						HttpStatus.UNAUTHORIZED);
+		}
+
+		// if user was found, but the account wasn't verified yet, the method returns
+		// conflict http status
+		if (!user.isAccountVerified())
+			return new ResponseEntity<>("The account wasn't verified", HttpStatus.CONFLICT);
+
+		Authentication auth = this.authenticateUser(user, credentials);
+
+		String jwts = jwtService.getToken(auth.getName());
+
+		// Checking the authentication instance (password, double-check username)
+		User authenticatedUser = urepository.findByUsername(auth.getName());
+
+		if (authenticatedUser == null)
+			return new ResponseEntity<>("Bad credentials", HttpStatus.UNAUTHORIZED);
+
+		// sending jwt as the authorization header, user's role as ALLOW header and
+		// user's id as HOST header in response entity
+		return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer " + jwts)
+				.header(HttpHeaders.ALLOW, authenticatedUser.getRole())
+				.header(HttpHeaders.HOST, authenticatedUser.getId().toString())
+				.header(HttpHeaders.ORIGIN, authenticatedUser.getUsername())
+				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization, Allow", "Host", "Origin").build();
+	}
+
+	private Authentication authenticateUser(User user, LoginForm credentials) {
+		UsernamePasswordAuthenticationToken authenticationInstance = new UsernamePasswordAuthenticationToken(
+				user.getUsername(), credentials.getPassword());
+		Authentication auth = authenticationManager.authenticate(authenticationInstance);
+
+		return auth;
+	}
+
+	public ResponseEntity<?> signUp(SignupForm signupForm) throws UnsupportedEncodingException, MessagingException {
+		// check if the username or email are already in use
+		if (urepository.findByEmail(signupForm.getEmail()) != null)
+			return new ResponseEntity<>("Email is already in use", HttpStatus.NOT_ACCEPTABLE);
+		if (urepository.findByUsername(signupForm.getUsername()) != null)
+			return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
+
+		User newUser = this.createSignupUser(signupForm);
+
+		this.setCompetitorStatusSignup(newUser, signupForm);
+
+		// try sending email, if it has errors then the sign-up function isn't available
+		try {
+			urepository.save(newUser);
+			this.sendVerificationEmail(newUser);
+			return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
+		} catch (MailAuthenticationException e) {
+			return new ResponseEntity<>("The smtp service authentication fail, ask admin to verify account",
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	private User createSignupUser(SignupForm signupForm) {
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(signupForm.getPassword());
+		String randomCode = RandomString.make(64);
+
+		User newUser = new User(signupForm.getUsername(), hashPwd, "USER", true, false,
+				srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
+
+		return newUser;
+	}
+
+	private void setCompetitorStatusSignup(User newUser, SignupForm signupForm) {
+		// check if the competition has already started and whether we should allow to
+		// set participant status
+		if (rrepository.findAll().size() == 0) {
+			newUser.setIsOut(!signupForm.getIsCompetitor());
+			newUser.setIsCompetitor(signupForm.getIsCompetitor());
+		}
+	}
 
 	public ResponseEntity<?> addNewUserByAdmin(AddUserFormForAdmin userForm)
 			throws MessagingException, UnsupportedEncodingException {
@@ -72,18 +201,27 @@ public class UserService {
 		if (urepository.findByUsername(userForm.getUsername()) != null)
 			return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
 
-		User newUser = createUserAdmin(userForm);
+		User newUser = this.createUserAdmin(userForm);
 
-		setCompetitorStatus(newUser, userForm);
+		this.setCompetitorStatus(newUser, userForm);
 
 		// check if admin created a verified user
 		if (userForm.getIsVerified()) {
-			setVerifiedUser(newUser);
+			this.setVerifiedUser(newUser);
 			return new ResponseEntity<>("The user was added to database", HttpStatus.OK);
 		}
 
-		setUnverifiedUser(newUser);
-		return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
+		this.setVerificationCode(newUser);
+
+		// try sending email, if it has errors then the sign-up function isn't available
+		try {
+			urepository.save(newUser);
+			this.sendVerificationEmail(newUser);
+			return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
+		} catch (MailAuthenticationException e) {
+			return new ResponseEntity<>("The smtp service authentication fail, ask admin to verify account",
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 	private User createUserAdmin(AddUserFormForAdmin userForm) {
@@ -109,12 +247,10 @@ public class UserService {
 		newUser.setAccountVerified(true);
 		urepository.save(newUser);
 	}
-
-	private void setUnverifiedUser(User newUser) throws MessagingException, UnsupportedEncodingException {
+	
+	private void setVerificationCode(User newUser) {
 		String randomCode = RandomString.make(64);
 		newUser.setVerificationCode(randomCode);
-		urepository.save(newUser);
-		this.sendVerificationEmail(newUser);
 	}
 
 	// Email sending method for verification
@@ -145,6 +281,88 @@ public class UserService {
 		mailSender.send(message);
 	}
 
+	public ResponseEntity<?> verifyRequest(VerificationCodeForm verificationForm) {
+		String verificationCode = verificationForm.getVerificationCode();
+
+		User user = urepository.findByVerificationCode(verificationCode);
+
+		if (user == null || user.isAccountVerified())
+			return new ResponseEntity<>("Verification code is incorrect or you are already verified",
+					HttpStatus.CONFLICT);
+
+		this.verifyUser(user);
+
+		return new ResponseEntity<>("Verification went well", HttpStatus.OK);
+	}
+	
+	private void verifyUser(User user) {
+		user.setVerificationCode(null);
+		user.setAccountVerified(true);
+		urepository.save(user);
+	}
+
+	public ResponseEntity<?> resetPassword(EmailForm emailForm)
+			throws UnsupportedEncodingException, MessagingException {
+		User user = urepository.findByEmail(emailForm.getEmail());
+
+		if (user == null)
+			return new ResponseEntity<>("User with this email (" + emailForm.getEmail() + ") doesn't exist",
+					HttpStatus.BAD_REQUEST);
+		if (!user.isAccountVerified())
+			return new ResponseEntity<>("User with this email (" + emailForm.getEmail() + ") is not verified",
+					HttpStatus.CONFLICT);
+
+		String randomPassword = this.setRandomPassword(user);
+
+		// try sending email, if it has errors then the reset password function isn't
+		// available
+		try {
+			this.sendPasswordEmail(user, randomPassword);
+			urepository.save(user);
+			return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
+		} catch (MailAuthenticationException e) {
+			return new ResponseEntity<>("The smtp service authentication fail", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+	
+	private String setRandomPassword(User user) {
+		String password = RandomString.make(15);
+
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(password);
+		user.setPasswordHash(hashPwd);
+		
+		return password;
+	}
+
+	// Email sending method for password reset
+	private void sendPasswordEmail(User user, String password) throws MessagingException, UnsupportedEncodingException {
+		String toAddress = user.getEmail();
+		String fromAddress = "aleksei.application.noreply@gmail.com";
+		String senderName = "No reply";
+		String subject = "Reset password";
+		String content = "Dear [[name]],<br>" + "Here is your new TEMPORARY password for tournament app:<br><br>"
+				+ "<h3>[[PASSWORD]]</h3>" + "Please change this password once you logged in<br><br>Thank you,<br>"
+				+ "AXOS inc.";
+
+		MimeMessage message = mailSender.createMimeMessage();
+		MimeMessageHelper helper = new MimeMessageHelper(message);
+
+		helper.setFrom(fromAddress, senderName);
+		helper.setTo(toAddress);
+		helper.setSubject(subject);
+
+		content = content.replace("[[name]]", user.getUsername());
+
+		content = content.replace("[[PASSWORD]]", password);
+
+		helper.setText(content, true);
+
+		mailSender.send(message);
+
+	}
+
 	public ResponseEntity<?> updateUserByAdmin(long userId, User updatedUser) {
 		Optional<User> optionalCurrentUser = urepository.findById(userId);
 
@@ -156,18 +374,26 @@ public class UserService {
 		if (updatedUser.getId() != currentUser.getId())
 			return new ResponseEntity<>("There is a user id missmatch in request body and path", HttpStatus.CONFLICT);
 
-		currentUser.setUsername(updatedUser.getUsername());
-		currentUser.setEmail(updatedUser.getEmail());
+		this.updateUserData(currentUser, updatedUser);
+
+		urepository.save(currentUser);
+
+		return new ResponseEntity<>("User was updated successfully", HttpStatus.OK);
+	}
+	
+	private void updateUserData(User currentUser, User updatedUser) {
+		this.updateUsernameAndEmail(currentUser, updatedUser);
 
 		this.updateRole(currentUser, updatedUser);
 
 		this.updateVerification(currentUser, updatedUser);
 
 		this.updateCompetitorStatus(currentUser, updatedUser);
-
-		urepository.save(currentUser);
-
-		return new ResponseEntity<>("User was updated successfully", HttpStatus.OK);
+	}
+	
+	private void updateUsernameAndEmail(User currentUser, User updatedUser) {
+		currentUser.setUsername(updatedUser.getUsername());
+		currentUser.setEmail(updatedUser.getEmail());
 	}
 
 	private void updateRole(User currentUser, User updatedUser) {
