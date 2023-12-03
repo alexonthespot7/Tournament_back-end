@@ -1,16 +1,16 @@
 package com.myproject.tournamentapp.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.myproject.tournamentapp.forms.RoundPublicInfo;
 import com.myproject.tournamentapp.forms.RoundsForAdminForm;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
@@ -29,6 +29,18 @@ public class RoundService {
 
 	@Autowired
 	private UserRepository urepository;
+	
+	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
+		List<Round> allRounds = rrepository.findAllCurrentAndPlayed();
+		
+		if (allRounds.isEmpty())
+			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
+
+		List<RoundPublicInfo> allPublicRounds = makeRoundsPublic(allRounds);
+
+		return allPublicRounds;
+	}
+
 
 	public @ResponseBody RoundsForAdminForm getRoundsInfoForAdmin() {
 
@@ -84,13 +96,13 @@ public class RoundService {
 
 		return new ResponseEntity<>("The round result was set successfully", HttpStatus.OK);
 	}
-	
+
 	private String setResult(Round round, Round localRound) {
 		String result = round.getResult();
 
 		localRound.setResult(result);
 		rrepository.save(localRound);
-		
+
 		return result;
 	}
 
@@ -230,6 +242,26 @@ public class RoundService {
 	// the username can be received by spliting the string with whitespace
 	private String extractUsername(String result) {
 		return result.substring(0, result.indexOf(" "));
+	}
+
+	// method for restricting the list of rounds, which by default contains user's
+	// info
+	public List<RoundPublicInfo> makeRoundsPublic(List<Round> rounds) {
+		List<RoundPublicInfo> publicRounds = new ArrayList<>();
+		RoundPublicInfo publicRound;
+		// In round entity one of the competitor can be null, so I need to handle it as
+		// well
+		String username1;
+		String username2;
+
+		for (Round round : rounds) {
+			username1 = round.getUser1() == null ? null : round.getUser1().getUsername();
+			username2 = round.getUser2() == null ? null : round.getUser2().getUsername();
+			publicRound = new RoundPublicInfo(username1, username2, round.getStage().getStage(), round.getResult());
+			publicRounds.add(publicRound);
+		}
+
+		return publicRounds;
 	}
 
 }

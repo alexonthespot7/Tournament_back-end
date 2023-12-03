@@ -61,7 +61,7 @@ public class RestAdminController {
 
 	// method to edit user's info by admin
 	@RequestMapping(value = "/updateuser/{userid}", method = RequestMethod.PUT)
-	public ResponseEntity<?> updateUserByAdmin(@PathVariable("userid") long userId, @RequestBody User updatedUser) {
+	public ResponseEntity<?> updateUserByAdmin(@PathVariable("userid") Long userId, @RequestBody User updatedUser) {
 
 		return userService.updateUserByAdmin(userId, updatedUser);
 

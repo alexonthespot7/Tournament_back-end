@@ -10,7 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.myproject.tournamentapp.forms.BracketPageInfo;
+import com.myproject.tournamentapp.forms.RoundPublicInfo;
+import com.myproject.tournamentapp.forms.StageForBracketInfo;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
@@ -28,6 +32,59 @@ public class BracketService {
 
 	@Autowired
 	private StageRepository srepository;
+
+	@Autowired
+	private RoundService roundService;
+
+	public BracketPageInfo getBracketInfo() {
+		List<Round> allRounds = rrepository.findAll();
+		if (allRounds.isEmpty())
+			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
+
+		List<StageForBracketInfo> stagesWithRounds = findStagesWithRounds();
+
+		String winner = findWinner();
+
+		BracketPageInfo bracketInfo = new BracketPageInfo(stagesWithRounds, winner);
+
+		return bracketInfo;
+	}
+
+	private List<StageForBracketInfo> findStagesWithRounds() {
+		// all stages except for 'no' stage
+		List<Stage> allStages = srepository.findAllStages();
+
+		// The list of stages which would include the stage's rounds
+		List<StageForBracketInfo> stagesWithRounds = new ArrayList<>();
+		StageForBracketInfo stageWithRounds;
+
+		// The variable to hold the list of public rounds info:
+		List<RoundPublicInfo> currentStagePublicRounds;
+
+		for (Stage stage : allStages) {
+			currentStagePublicRounds = roundService.makeRoundsPublic(rrepository.findRoundsByStage(stage.getStageid()));
+
+			stageWithRounds = new StageForBracketInfo(stage.getStage(), stage.getIsCurrent(), currentStagePublicRounds);
+			stagesWithRounds.add(stageWithRounds);
+		}
+
+		return stagesWithRounds;
+	}
+
+	private String findWinner() {
+		String winner = "";
+
+		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
+			Round finalOf = rrepository.findFinal();
+
+			String result = finalOf.getResult();
+			if (result.indexOf(" ") != -1) {
+				winner = result.substring(0, result.indexOf(" "));
+			}
+		}
+
+		return winner;
+	}
 
 	@Transactional
 	public ResponseEntity<?> makeBracket() {
@@ -225,7 +282,7 @@ public class BracketService {
 		// deleting all stages, except 'no' stage
 		srepository.deleteAllStages();
 
-		//making the 'no' stage current
+		// making the 'no' stage current
 		Stage noStage = srepository.findByStage("No").get(0);
 		noStage.setIsCurrent(true);
 		srepository.save(noStage);

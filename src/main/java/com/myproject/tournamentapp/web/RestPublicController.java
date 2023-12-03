@@ -6,14 +6,9 @@ import javax.mail.MessagingException;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.MailAuthenticationException;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -25,12 +20,8 @@ import com.myproject.tournamentapp.forms.LoginForm;
 import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.VerificationCodeForm;
 import com.myproject.tournamentapp.model.RoundRepository;
-import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
-import com.myproject.tournamentapp.service.AuthenticationService;
 import com.myproject.tournamentapp.service.UserService;
-
-import net.bytebuddy.utility.RandomString;
 
 @RestController
 @RequestMapping("/api")
@@ -83,8 +74,8 @@ public class RestPublicController {
 	@RequestMapping(value = "/resetpassword", method = RequestMethod.PUT)
 	public ResponseEntity<?> resetPassword(@RequestBody EmailForm emailForm)
 			throws UnsupportedEncodingException, MessagingException {
-		
+
 		return userService.resetPassword(emailForm);
-	
+
 	}
 }

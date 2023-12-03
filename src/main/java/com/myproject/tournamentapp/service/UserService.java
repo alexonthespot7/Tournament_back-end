@@ -7,7 +7,6 @@ import java.util.Optional;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
-import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -21,16 +20,20 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.myproject.tournamentapp.MyUser;
 import com.myproject.tournamentapp.forms.AddUserFormForAdmin;
+import com.myproject.tournamentapp.forms.ChangePasswordForm;
 import com.myproject.tournamentapp.forms.CompetitorPublicInfo;
 import com.myproject.tournamentapp.forms.EmailForm;
 import com.myproject.tournamentapp.forms.LoginForm;
+import com.myproject.tournamentapp.forms.PersonalInfo;
+import com.myproject.tournamentapp.forms.RoundPublicInfo;
 import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.UsersPageAdminForm;
 import com.myproject.tournamentapp.forms.VerificationCodeForm;
+import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
@@ -48,6 +51,9 @@ public class UserService {
 
 	@Autowired
 	private StageRepository srepository;
+
+	@Autowired
+	private RoundService roundService;
 
 	@Autowired
 	private AuthenticationService jwtService;
@@ -83,29 +89,64 @@ public class UserService {
 
 		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset, isBracketMade);
 	}
-	
+
 	public List<CompetitorPublicInfo> listCompetitorsPublicInfo() {
 		List<User> allUsers = urepository.findAll();
-		
+
 		List<CompetitorPublicInfo> allCompetitors = this.makeAllPublicCompetitors(allUsers);
 
 		return allCompetitors;
 	}
-	
+
 	private List<CompetitorPublicInfo> makeAllPublicCompetitors(List<User> allUsers) {
 		List<CompetitorPublicInfo> allCompetitors = new ArrayList<>();
 		CompetitorPublicInfo competitor;
-		
+
 		for (User user : allUsers) {
 			if (user.getIsCompetitor()) {
 				competitor = new CompetitorPublicInfo(user.getUsername(), user.getIsOut(), user.getStage().getStage());
 				allCompetitors.add(competitor);
 			}
 		}
-		
+
 		return allCompetitors;
 	}
 
+	public PersonalInfo getPersonalInfoById(Long userId, Authentication auth) {
+		// double check authentication
+		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+
+		User user = findUserByAuth(auth);
+
+		if (user == null || user.getId() != userId)
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have an access to this page");
+
+		List<Round> allRounds = findAllUsersRounds(user);
+
+		List<RoundPublicInfo> publicUserRounds = roundService.makeRoundsPublic(allRounds);
+
+		int roundsQuantity = rrepository.findAll().size();
+
+		PersonalInfo personalInfoInstance = new PersonalInfo(user.getUsername(), user.getEmail(), user.getIsOut(),
+				user.getStage().getStage(), user.getIsCompetitor(), roundsQuantity, publicUserRounds);
+
+		return personalInfoInstance;
+	}
+
+	private User findUserByAuth(Authentication auth) {
+		MyUser myUserInstance = (MyUser) auth.getPrincipal();
+		User user = urepository.findByUsername(myUserInstance.getUsername());
+
+		return user;
+	}
+
+	private List<Round> findAllUsersRounds(User user) {
+		List<Round> allRounds = user.getRounds1();
+		allRounds.addAll(user.getRounds2());
+
+		return allRounds;
+	}
 
 	public ResponseEntity<?> loginMethod(LoginForm credentials) {
 		User user = urepository.findByEmail(credentials.getUsername());
@@ -247,7 +288,7 @@ public class UserService {
 		newUser.setAccountVerified(true);
 		urepository.save(newUser);
 	}
-	
+
 	private void setVerificationCode(User newUser) {
 		String randomCode = RandomString.make(64);
 		newUser.setVerificationCode(randomCode);
@@ -294,10 +335,36 @@ public class UserService {
 
 		return new ResponseEntity<>("Verification went well", HttpStatus.OK);
 	}
-	
+
 	private void verifyUser(User user) {
 		user.setVerificationCode(null);
 		user.setAccountVerified(true);
+		urepository.save(user);
+	}
+
+	public ResponseEntity<?> changePassword(ChangePasswordForm changePasswordForm, Authentication auth) {
+		// check authentication;
+		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
+			return new ResponseEntity<>("Not authenticated", HttpStatus.UNAUTHORIZED);
+
+		User user = findUserByAuth(auth);
+
+		if (user == null)
+			return new ResponseEntity<>("Not authenticated", HttpStatus.UNAUTHORIZED);
+
+		BCryptPasswordEncoder bcEncoder = new BCryptPasswordEncoder();
+		// check the old password provided by user
+		if (!bcEncoder.matches(changePasswordForm.getOldPassword(), user.getPasswordHash()))
+			return new ResponseEntity<>("The old password is incorrect", HttpStatus.FORBIDDEN);
+
+		updatePassword(bcEncoder, changePasswordForm, user);
+
+		return new ResponseEntity<>("The password was successfully changed", HttpStatus.OK);
+	}
+
+	private void updatePassword(BCryptPasswordEncoder bcEncoder, ChangePasswordForm changePasswordForm, User user) {
+		String newHashedPwd = bcEncoder.encode(changePasswordForm.getNewPassword());
+		user.setPasswordHash(newHashedPwd);
 		urepository.save(user);
 	}
 
@@ -325,14 +392,14 @@ public class UserService {
 		}
 
 	}
-	
+
 	private String setRandomPassword(User user) {
 		String password = RandomString.make(15);
 
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(password);
 		user.setPasswordHash(hashPwd);
-		
+
 		return password;
 	}
 
@@ -363,7 +430,29 @@ public class UserService {
 
 	}
 
-	public ResponseEntity<?> updateUserByAdmin(long userId, User updatedUser) {
+	public ResponseEntity<?> updateUser(Long userId, PersonalInfo personalInfo) {
+		Optional<User> optionalUser = urepository.findById(userId);
+
+		if (!optionalUser.isPresent())
+			return new ResponseEntity<>("Something wrong with authentication", HttpStatus.CONFLICT);
+
+		User user = optionalUser.get();
+
+		updateUsersInfo(user, personalInfo);
+
+		return new ResponseEntity<>("User info was updated successfully", HttpStatus.OK);
+	}
+
+	private void updateUsersInfo(User user, PersonalInfo personalInfo) {
+		if (rrepository.findAll().size() == 0) {
+			user.setIsCompetitor(personalInfo.isCompetitor());
+			user.setIsOut(!personalInfo.isCompetitor());
+		}
+
+		urepository.save(user);
+	}
+
+	public ResponseEntity<?> updateUserByAdmin(Long userId, User updatedUser) {
 		Optional<User> optionalCurrentUser = urepository.findById(userId);
 
 		if (!optionalCurrentUser.isPresent())
@@ -380,7 +469,7 @@ public class UserService {
 
 		return new ResponseEntity<>("User was updated successfully", HttpStatus.OK);
 	}
-	
+
 	private void updateUserData(User currentUser, User updatedUser) {
 		this.updateUsernameAndEmail(currentUser, updatedUser);
 
@@ -390,7 +479,7 @@ public class UserService {
 
 		this.updateCompetitorStatus(currentUser, updatedUser);
 	}
-	
+
 	private void updateUsernameAndEmail(User currentUser, User updatedUser) {
 		currentUser.setUsername(updatedUser.getUsername());
 		currentUser.setEmail(updatedUser.getEmail());
