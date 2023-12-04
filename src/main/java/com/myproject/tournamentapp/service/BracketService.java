@@ -6,8 +6,6 @@ import java.util.List;
 
 import jakarta.transaction.Transactional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +25,6 @@ import com.myproject.tournamentapp.model.UserRepository;
 @Service
 public class BracketService {
 	
-	private static final Logger log = LoggerFactory.getLogger(BracketService.class);
-
-	
 	@Autowired
 	private UserRepository urepository;
 
@@ -43,21 +38,13 @@ public class BracketService {
 	private RoundService roundService;
 
 	public BracketPageInfo getBracketInfo() {
-		
-		log.info("Stage1: Pass");
-		
+				
 		List<Round> allRounds = rrepository.findAll();
-		
-		log.info("Stage2: Pass");
-		
+				
 		if (allRounds.isEmpty())
 			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
 		
-		log.info("Stage3: Pass");
-
 		List<StageForBracketInfo> stagesWithRounds = findStagesWithRounds();
-
-		log.info("Stage6: Pass");
 		
 		String winner = findWinner();
 
@@ -70,9 +57,7 @@ public class BracketService {
 	private List<StageForBracketInfo> findStagesWithRounds() {
 		// all stages except for 'no' stage
 		List<Stage> allStages = srepository.findAllStages();
-		
-		log.info("Stage4: Pass");
-		
+				
 
 		// The list of stages which would include the stage's rounds
 		List<StageForBracketInfo> stagesWithRounds = new ArrayList<>();
@@ -88,8 +73,6 @@ public class BracketService {
 			stagesWithRounds.add(stageWithRounds);
 		}
 		
-		log.info("Stage5: Pass");
-
 
 		return stagesWithRounds;
 	}
@@ -99,22 +82,14 @@ public class BracketService {
 		
 		String currentStage = srepository.findCurrentStage().getStage();
 		
-		log.info("Stage7: Pass");
-
 		int roundsQuantity = rrepository.findAll().size();
-		
-		log.info("Stage8: Pass");
-
 
 		if (currentStage.equals("No") && roundsQuantity > 0) {
-			log.info("Stage9: Pass");
 
 			Round finalOf = rrepository.findFinal();
-			
-			log.info("Stage10: Pass");
-
 
 			String result = finalOf.getResult();
+			
 			if (result.indexOf(" ") != -1) {
 				winner = result.substring(0, result.indexOf(" "));
 			}
