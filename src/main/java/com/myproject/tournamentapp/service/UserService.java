@@ -40,9 +40,6 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
-import io.swagger.v3.oas.annotations.headers.Header;
-
-
 @Service
 public class UserService {
 	@Autowired

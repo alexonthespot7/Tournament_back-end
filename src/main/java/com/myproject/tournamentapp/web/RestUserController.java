@@ -24,7 +24,6 @@ import com.myproject.tournamentapp.service.RoundService;
 import com.myproject.tournamentapp.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -55,7 +54,7 @@ public class RestUserController {
 	private BracketService bracketService;
 	
 	// method to display competitors on competitors page for authorized user
-	@Operation(summary = "Gets the list of competitors", description = "The method to fetch the list of all competitors. Competitor record doesn't contain any sensitive data, thus can be perceived by users")
+	@Operation(summary = "Gets competitors", description = "The method to fetch the list of all competitors. Competitor record doesn't contain any sensitive data, thus can be perceived by users")
 	@ApiResponses(value = { 
 			@ApiResponse(responseCode = "200", description = "OK", content = {
 			        @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = CompetitorPublicInfo.class)))

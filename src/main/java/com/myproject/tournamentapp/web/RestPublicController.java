@@ -118,7 +118,7 @@ public class RestPublicController {
 							@ExampleObject(value = "Username is already in use")
 					}) 
 			}),
-			@ApiResponse(responseCode = "500", description = "INTERNAL_SERVER_ERROR, the smtp service credentials are incorrect or can't reach the service.", content = {
+			@ApiResponse(responseCode = "500", description = "INTERNAL_SERVER_ERROR, the user was added to database, but the smtp service credentials are incorrect or can't reach the service, therefore user should be verified by admin or try signup later.", content = {
 					@Content(mediaType = "text/plain", schema = @Schema(implementation = String.class), examples = {
 							@ExampleObject(value = "The smtp service authentication fail, ask admin to verify account")
 					})
