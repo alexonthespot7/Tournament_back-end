@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +13,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailAuthenticationException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -53,15 +50,15 @@ public class UserService {
 
 	@Autowired
 	private RoundService roundService;
+	
+	@Autowired
+	private MailService mailService;
 
 	@Autowired
 	private AuthenticationService jwtService;
 
 	@Autowired
 	private AuthenticationManager authenticationManager;
-
-	@Autowired
-	private JavaMailSender mailSender;
 	
 	public static final String FRONT_END_URL = "http://localhost:3000";
 
@@ -205,7 +202,7 @@ public class UserService {
 		// try sending email, if it has errors then the sign-up function isn't available
 		try {
 			urepository.save(newUser);
-			this.sendVerificationEmail(newUser);
+			mailService.sendVerificationEmail(newUser);
 			return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
 		} catch (MailAuthenticationException e) {
 			return new ResponseEntity<>("The smtp service authentication fail, ask admin to verify account",
@@ -256,7 +253,7 @@ public class UserService {
 		// try sending email, if it has errors then the sign-up function isn't available
 		try {
 			urepository.save(newUser);
-			this.sendVerificationEmail(newUser);
+			mailService.sendVerificationEmail(newUser);
 			return new ResponseEntity<>("We sent verification link to your email address", HttpStatus.OK);
 		} catch (MailAuthenticationException e) {
 			return new ResponseEntity<>("The smtp service authentication fail, ask admin to verify account",
@@ -291,34 +288,6 @@ public class UserService {
 	private void setVerificationCode(User newUser) {
 		String randomCode = RandomStringUtils.random(64);
 		newUser.setVerificationCode(randomCode);
-	}
-
-	// Email sending method for verification
-	private void sendVerificationEmail(User user) throws MessagingException, UnsupportedEncodingException {
-		String toAddress = user.getEmail();
-		String fromAddress = "aleksei.application.noreply@gmail.com";
-		String senderName = "No reply";
-		String subject = "Please verify your registration";
-		String content = "Dear [[name]],<br>"
-				+ "Please click the link below to verify your registration on the tournament app:<br>"
-				+ "<h3><a href=\"[[URL]]\" target=\"_self\">VERIFY</a></h3>" + "Thank you,<br>" + "AXOS inc.";
-		String endpoint = "/verify?code=";
-
-		MimeMessage message = mailSender.createMimeMessage();
-		MimeMessageHelper helper = new MimeMessageHelper(message);
-
-		helper.setFrom(fromAddress, senderName);
-		helper.setTo(toAddress);
-		helper.setSubject(subject);
-
-		content = content.replace("[[name]]", user.getUsername());
-		String mainURL = FRONT_END_URL + endpoint + user.getVerificationCode();
-
-		content = content.replace("[[URL]]", mainURL);
-
-		helper.setText(content, true);
-
-		mailSender.send(message);
 	}
 
 	public ResponseEntity<?> verifyRequest(VerificationCodeForm verificationForm) {
@@ -383,7 +352,7 @@ public class UserService {
 		// try sending email, if it has errors then the reset password function isn't
 		// available
 		try {
-			this.sendPasswordEmail(user, randomPassword);
+			mailService.sendPasswordEmail(user, randomPassword);
 			urepository.save(user);
 			return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
 		} catch (MailAuthenticationException e) {
@@ -400,33 +369,6 @@ public class UserService {
 		user.setPasswordHash(hashPwd);
 
 		return password;
-	}
-
-	// Email sending method for password reset
-	private void sendPasswordEmail(User user, String password) throws MessagingException, UnsupportedEncodingException {
-		String toAddress = user.getEmail();
-		String fromAddress = "aleksei.application.noreply@gmail.com";
-		String senderName = "No reply";
-		String subject = "Reset password";
-		String content = "Dear [[name]],<br>" + "Here is your new TEMPORARY password for tournament app:<br><br>"
-				+ "<h3>[[PASSWORD]]</h3>" + "Please change this password once you logged in<br><br>Thank you,<br>"
-				+ "AXOS inc.";
-
-		MimeMessage message = mailSender.createMimeMessage();
-		MimeMessageHelper helper = new MimeMessageHelper(message);
-
-		helper.setFrom(fromAddress, senderName);
-		helper.setTo(toAddress);
-		helper.setSubject(subject);
-
-		content = content.replace("[[name]]", user.getUsername());
-
-		content = content.replace("[[PASSWORD]]", password);
-
-		helper.setText(content, true);
-
-		mailSender.send(message);
-
 	}
 
 	public ResponseEntity<?> updateUser(Long userId, PersonalInfo personalInfo) {
