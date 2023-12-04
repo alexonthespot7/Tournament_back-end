@@ -5,9 +5,7 @@ import java.io.UnsupportedEncodingException;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
 
-import org.hibernate.jpa.boot.internal.PersistenceXmlParser.ErrorHandlerImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,7 +37,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Public Methods", description = "Methods that don't require any authentication")
 @ApiResponses(value = {
 		@ApiResponse(responseCode = "401", description = "Error: Full authentication is required to access this resource. Excessively provided jwt token is wrong", content = {
-				@Content(mediaType = "application/json", schema = @Schema(implementation = ResponseStatusException.class)) }) })
+				@Content(mediaType = "application/json", schema = @Schema(implementation = ResponseStatusException.class)) 
+		}) 
+})
 public class RestPublicController {
 	@Autowired
 	UserRepository urepository;
