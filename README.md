@@ -7,6 +7,7 @@
 * [Usage Guide](#usage-guide)
 * [Features](#features)
 * [Technologies Used](#technologies-used)
+* [Documentation](#documentation)
 * [License](#license)
 
 ## Usage Guide
@@ -42,6 +43,9 @@ To activate smtp service functionality you will need to set the following env va
 - RESTful APIs
 - JWT (JSON Web Token)
 - smtp
+
+## Documentation
+The documentation for this project is made with Swagger and can be accessed after launching the project at the following endpoint: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 
 ## License
 This project is under the MIT License.
