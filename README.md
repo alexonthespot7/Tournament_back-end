@@ -7,6 +7,7 @@
 * [Usage Guide](#usage-guide)
 * [Features](#features)
 * [Technologies Used](#technologies-used)
+* [Dependencies](#dependencies)
 * [Documentation](#documentation)
 * [License](#license)
 
