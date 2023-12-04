@@ -1,6 +1,6 @@
 package com.myproject.tournamentapp.forms;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 
 public class AddUserFormForAdmin extends SignupForm {
 	@NotBlank(message = "Role is mandatory")

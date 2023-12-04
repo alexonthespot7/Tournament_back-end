@@ -4,6 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
@@ -12,6 +13,7 @@ import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
 @SpringBootApplication
+@EnableMethodSecurity
 public class TournamentApplication {
 
 	public static void main(String[] args) {

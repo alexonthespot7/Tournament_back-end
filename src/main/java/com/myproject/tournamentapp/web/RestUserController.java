@@ -22,8 +22,12 @@ import com.myproject.tournamentapp.service.BracketService;
 import com.myproject.tournamentapp.service.RoundService;
 import com.myproject.tournamentapp.service.UserService;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api")
+@Tag(name="Authenticated Methods", description="Methods that can be fetched by all authenticated users (ADMIN and USER). These methods require sending the jwt token in the request's Authorization header")
 @PreAuthorize("isAuthenticated()")
 public class RestUserController {
 
@@ -36,7 +40,7 @@ public class RestUserController {
 	@Autowired
 	private BracketService bracketService;
 	
-
+//@Content
 	// method to display competitors on competitors page for authorized user
 	@RequestMapping(value = "/competitors", method = RequestMethod.GET)
 	public @ResponseBody List<CompetitorPublicInfo> listCompetitorsPublicInfo() {

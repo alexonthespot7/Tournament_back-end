@@ -3,7 +3,7 @@ package com.myproject.tournamentapp.web;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 
-import javax.mail.MessagingException;
+import jakarta.mail.MessagingException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +26,12 @@ import com.myproject.tournamentapp.service.BracketService;
 import com.myproject.tournamentapp.service.RoundService;
 import com.myproject.tournamentapp.service.UserService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 
 @RestController
 @RequestMapping("/api/admin")
+@Tag(name="Admin Methods", description="Methods that can be fetched by ADMINs only. These methods require sending the jwt token in the request's Authorization header")
 @PreAuthorize("hasAuthority('ADMIN')")
 public class RestAdminController {
 	@Autowired
