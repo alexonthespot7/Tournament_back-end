@@ -5,9 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -39,8 +40,6 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
-import net.bytebuddy.utility.RandomString;
-
 @Service
 public class UserService {
 	@Autowired
@@ -63,7 +62,7 @@ public class UserService {
 
 	@Autowired
 	private JavaMailSender mailSender;
-
+	
 	public static final String FRONT_END_URL = "http://localhost:3000";
 
 	public UsersPageAdminForm getUsersForAdmin() {
@@ -157,7 +156,7 @@ public class UserService {
 			// unauthorized response entity
 			if (user == null)
 				return new ResponseEntity<>("No user was found for the provided username/email",
-						HttpStatus.UNAUTHORIZED);
+						HttpStatus.BAD_REQUEST);
 		}
 
 		// if user was found, but the account wasn't verified yet, the method returns
@@ -217,7 +216,7 @@ public class UserService {
 	private User createSignupUser(SignupForm signupForm) {
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(signupForm.getPassword());
-		String randomCode = RandomString.make(64);
+		String randomCode = RandomStringUtils.random(64);
 
 		User newUser = new User(signupForm.getUsername(), hashPwd, "USER", true, false,
 				srepository.findByStage("No").get(0), signupForm.getEmail(), randomCode);
@@ -290,7 +289,7 @@ public class UserService {
 	}
 
 	private void setVerificationCode(User newUser) {
-		String randomCode = RandomString.make(64);
+		String randomCode = RandomStringUtils.random(64);
 		newUser.setVerificationCode(randomCode);
 	}
 
@@ -394,7 +393,7 @@ public class UserService {
 	}
 
 	private String setRandomPassword(User user) {
-		String password = RandomString.make(15);
+		String password = RandomStringUtils.random(15);
 
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(password);

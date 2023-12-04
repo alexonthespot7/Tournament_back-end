@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,6 +24,7 @@ import com.myproject.tournamentapp.model.UserRepository;
 
 @Service
 public class BracketService {
+	
 	@Autowired
 	private UserRepository urepository;
 
@@ -37,14 +38,17 @@ public class BracketService {
 	private RoundService roundService;
 
 	public BracketPageInfo getBracketInfo() {
+				
 		List<Round> allRounds = rrepository.findAll();
+				
 		if (allRounds.isEmpty())
 			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
-
+		
 		List<StageForBracketInfo> stagesWithRounds = findStagesWithRounds();
-
+		
 		String winner = findWinner();
 
+		
 		BracketPageInfo bracketInfo = new BracketPageInfo(stagesWithRounds, winner);
 
 		return bracketInfo;
@@ -53,6 +57,7 @@ public class BracketService {
 	private List<StageForBracketInfo> findStagesWithRounds() {
 		// all stages except for 'no' stage
 		List<Stage> allStages = srepository.findAllStages();
+				
 
 		// The list of stages which would include the stage's rounds
 		List<StageForBracketInfo> stagesWithRounds = new ArrayList<>();
@@ -67,17 +72,24 @@ public class BracketService {
 			stageWithRounds = new StageForBracketInfo(stage.getStage(), stage.getIsCurrent(), currentStagePublicRounds);
 			stagesWithRounds.add(stageWithRounds);
 		}
+		
 
 		return stagesWithRounds;
 	}
 
 	private String findWinner() {
 		String winner = "";
+		
+		String currentStage = srepository.findCurrentStage().getStage();
+		
+		int roundsQuantity = rrepository.findAll().size();
 
-		if (srepository.findCurrentStage().getStage().equals("No") & rrepository.findAll().size() > 0) {
+		if (currentStage.equals("No") && roundsQuantity > 0) {
+
 			Round finalOf = rrepository.findFinal();
 
 			String result = finalOf.getResult();
+			
 			if (result.indexOf(" ") != -1) {
 				winner = result.substring(0, result.indexOf(" "));
 			}
