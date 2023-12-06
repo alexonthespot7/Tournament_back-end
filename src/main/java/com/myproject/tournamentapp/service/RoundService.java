@@ -31,9 +31,10 @@ public class RoundService {
 	private UserRepository urepository;
 	
 	public String getRoundsQuantity() {
-		int roundQuantity = rrepository.findAll().size();
+		List<Round> rounds = rrepository.findAll();
+		int roundsQuantity = rounds.size();
 
-		return String.valueOf(roundQuantity);
+		return String.valueOf(roundsQuantity);
 	}
 
 	

@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,9 +16,7 @@ import com.myproject.tournamentapp.model.Stage;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
-import com.myproject.tournamentapp.service.RoundService;
 
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -41,24 +38,18 @@ public class RestPublicControllerTest {
 	@Autowired
 	private ObjectMapper objectMapper;
 
-	@MockBean
-	private RoundService roundService;
-
 	@Autowired
 	private UserRepository urepository;
 	
 	@Autowired
 	private StageRepository srepository;
 
+	
 	@Test
 	public void testGetRoundsQuantityMethod() throws Exception {
 		String requestURI = END_POINT_PATH + "/roundsquantity";
-
-		String roundQuantity = "0";
-
-		when(roundService.getRoundsQuantity()).thenReturn(roundQuantity);
-
-		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string(roundQuantity));
+		
+		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string("0"));
 	}
 
 	@Test

@@ -1,0 +1,198 @@
+package com.myproject.tournamentapp;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.myproject.tournamentapp.forms.ChangePasswordForm;
+import com.myproject.tournamentapp.forms.LoginForm;
+import com.myproject.tournamentapp.forms.PersonalInfo;
+import com.myproject.tournamentapp.model.Round;
+import com.myproject.tournamentapp.model.RoundRepository;
+import com.myproject.tournamentapp.model.Stage;
+import com.myproject.tournamentapp.model.StageRepository;
+import com.myproject.tournamentapp.model.User;
+import com.myproject.tournamentapp.model.UserRepository;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SpringBootTest
+@AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class RestUserControllerTest {
+	private static final String END_POINT_PATH = "/api";
+
+	private String jwtToken;
+
+	@Autowired
+	private MockMvc mockMvc;
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
+	@Autowired
+	private UserRepository urepository;
+
+	@Autowired
+	private StageRepository srepository;
+
+	@Autowired
+	private RoundRepository rrepository;
+
+	@BeforeAll
+	public void loginAndRetrieveToken() throws Exception {
+		String requestURI = END_POINT_PATH + "/login";
+
+		// Create the login request body
+		LoginForm loginForm = new LoginForm("user1", "asas2233");
+		String requestBody = objectMapper.writeValueAsString(loginForm);
+
+		// Perform the login request and retrieve the token
+		MvcResult result = mockMvc
+				.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBody))
+				.andExpect(status().isOk()).andReturn();
+
+		// Retrieve the JWT token from the login response
+		jwtToken = result.getResponse().getHeader("Authorization");
+	}
+
+	@Test
+	@Order(1)
+	public void testGetCompetitors() throws Exception {
+		String requestURI = END_POINT_PATH + "/competitors";
+
+		// good request case:
+		// here I use the amount of hard-coded competitors to check the size of
+		// competitors array
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(4));
+	}
+
+	@Test
+	@Order(2)
+	public void testGetPersonalInfoById() throws Exception {
+		String requestURI = END_POINT_PATH + "/competitors/";
+
+		// wrong userid in path case:
+		String requestURIWrongId = requestURI + "1";
+		mockMvc.perform(get(requestURIWrongId).header("Authorization", jwtToken)).andExpect(status().isForbidden());
+
+		// good request case:
+		// here I use the hard-coded user1 authentication, which has userid 2.
+		String requestURIGood = requestURI + "2";
+		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"));
+	}
+
+	// test the method to update participants status;
+	@Test
+	@Order(3)
+	public void testUpdateUser() throws Exception {
+		String requestURI = END_POINT_PATH + "/updateuser/";
+
+		// wrong userid in path case:
+		String requestURIWrongUserId = requestURI + "1";
+
+		PersonalInfo personalInfoGood = new PersonalInfo("user1", "mail@test.com", false, "No", false, 0, null);
+		String requestBodyGood = objectMapper.writeValueAsString(personalInfoGood);
+		mockMvc.perform(put(requestURIWrongUserId).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyGood)).andExpect(status().isForbidden());
+
+		// good request case:
+		// here I use the hard-coded user1 authentication, which has userid 2.
+		User userBeforeUpdate = urepository.findByUsername("user1");
+		assertThat(userBeforeUpdate.getIsCompetitor()).isTrue();
+		String requestURIGood = requestURI + "2";
+
+		mockMvc.perform(put(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBodyGood)).andExpect(status().isOk());
+
+		User userAfterUpdate = urepository.findByUsername("user1");
+		assertThat(userAfterUpdate.getIsCompetitor()).isFalse();
+	}
+
+	@Test
+	@Order(4)
+	public void testGetPublicInfoOfAllRounds() throws Exception {
+		String requestURI = END_POINT_PATH + "/rounds";
+
+		// case, when the bracket wasn't made yet
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isAccepted());
+
+		// good case (first let's add some rounds to repo first):
+		Stage stageSemiFinal = new Stage("1/2", true);
+		Stage stageFinal = new Stage("fina");
+		Stage stageNo = srepository.findCurrentStage();
+		stageNo.setIsCurrent(false);
+		srepository.save(stageSemiFinal);
+		srepository.save(stageFinal);
+		srepository.save(stageNo);
+		
+		Round round1 = new Round("No", stageSemiFinal);
+		Round round2 = new Round("No", stageSemiFinal);
+		Round round3 = new Round("No", stageFinal);
+		rrepository.save(round1);
+		rrepository.save(round2);
+		rrepository.save(round3);
+
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk());
+	}
+	
+	@Test
+	@Order(5)
+	public void testGetBracketInfo() throws Exception {
+		String requestURI = END_POINT_PATH + "/bracket";
+		// good case (the rounds were added in previous test method:
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk());
+		
+		// bracket wasn't made yet case:
+		rrepository.deleteAll();
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isAccepted());
+	}
+
+	@Test
+	@Order(6)
+	public void testCahngePassword() throws Exception {
+		String requestURI = END_POINT_PATH + "/changepassword";
+
+		// wrong old password case:
+		ChangePasswordForm changePasswordFormWrongPwd = new ChangePasswordForm("awaw2233", "awaw2233");
+		String requestBodyWrongPwd = objectMapper.writeValueAsString(changePasswordFormWrongPwd);
+		mockMvc.perform(put(requestURI).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBodyWrongPwd)).andExpect(status().isForbidden());
+
+		// good request case:
+		// here I use the hard-coded user1 with intial password "asas2233";
+		ChangePasswordForm changePasswordFormGood = new ChangePasswordForm("asas2233", "awaw2233");
+		String requestBodyGood = objectMapper.writeValueAsString(changePasswordFormGood);
+		mockMvc.perform(put(requestURI).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBodyGood)).andExpect(status().isOk());
+
+		// Create the login request body
+		LoginForm loginForm = new LoginForm("user1", "awaw2233");
+		String requestBody = objectMapper.writeValueAsString(loginForm);
+
+		// Perform the login request and retrieve the token
+		mockMvc.perform(post("/api/login").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+				.andExpect(status().isOk());
+	}
+
+}
