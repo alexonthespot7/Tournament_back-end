@@ -28,8 +28,8 @@ public class RoundRepositoryTests {
 	@Test
 	public void creationTestsRounds() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
-
-		Stage stageNo = srepository.findCurrentStage();
+		Stage stageNo = this.resetStageRepo();
+		
 		Round round = new Round("No", stageNo);
 
 		rrepository.save(round);
@@ -40,11 +40,11 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindAllRounds() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
+		Stage stageNo = this.resetStageRepo();
 
 		List<Round> allRounds = rrepository.findAll();
 		assertThat(allRounds).hasSize(0);
 
-		Stage stageNo = srepository.findCurrentStage();
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("No", stageNo);
 		rrepository.save(round1);
@@ -59,11 +59,11 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindAllCurrentAndPlayedRounds() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
+		Stage stageNo = this.resetStageRepo();
 
 		List<Round> allCurrentAndPlayedRounds = rrepository.findAllCurrentAndPlayed();
 		assertThat(allCurrentAndPlayedRounds).hasSize(0);
 		
-		Stage stageNo = srepository.findCurrentStage();
 		stageNo.setIsCurrent(false);
 		srepository.save(stageNo);
 		
@@ -87,11 +87,11 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindRoundById() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
+		Stage stageNo = this.resetStageRepo();
 
 		Round round = rrepository.findRoundById(Long.valueOf(1));
 		assertThat(round).isNull();
 		
-		Stage stageNo = srepository.findCurrentStage();
 		Round newRound = new Round("No", stageNo);
 		rrepository.save(newRound);
 		
@@ -103,11 +103,11 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindCurrentRounds() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
+		Stage stageNo = this.resetStageRepo();
 
 		List<Round> currentRoundsNotFound = rrepository.findCurrentRounds();
 		assertThat(currentRoundsNotFound).hasSize(0);
 		
-		Stage stageNo = srepository.findCurrentStage();
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("No", stageNo);
 		rrepository.save(round1);
@@ -121,8 +121,7 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindRoundsByStage() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
-		
-		Stage stageNo = srepository.findCurrentStage();
+		Stage stageNo = this.resetStageRepo();
 		
 		List<Round> roundsByStageNotFound = rrepository.findRoundsByStage(stageNo.getStageid());
 		assertThat(roundsByStageNotFound).hasSize(0);
@@ -140,11 +139,11 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindQuantityOfGamesInCurrentStage() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
+		Stage stageNo = this.resetStageRepo();
 
 		int quantityOfGamesInCurrentStageZero = rrepository.findQuantityOfGamesInCurrentStage();
 		assertThat(quantityOfGamesInCurrentStageZero).isEqualTo(0);
 		
-		Stage stageNo = srepository.findCurrentStage();
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("No", stageNo);
 		rrepository.save(round1);
@@ -158,11 +157,11 @@ public class RoundRepositoryTests {
 	@Test
 	public void testQuantityOfPlayedInCurrentStage() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
+		Stage stageNo = this.resetStageRepo();
 
 		int quantityOfPlayedInCurrentStageZero = rrepository.quantityOfPlayedInCurrentStage();
 		assertThat(quantityOfPlayedInCurrentStageZero).isEqualTo(0);
 		
-		Stage stageNo = srepository.findCurrentStage();
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("Messi win", stageNo);
 		rrepository.save(round1);
@@ -176,7 +175,8 @@ public class RoundRepositoryTests {
 	@Test
 	public void testFindFinal() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
-		
+		this.resetStageRepo();
+
 		Round finalNotFound = rrepository.findFinal();
 		assertThat(finalNotFound).isNull();
 		
@@ -193,8 +193,8 @@ public class RoundRepositoryTests {
 	@Test
 	public void testUpdateRound() {
 		rrepository.deleteAll(); // deleting all hard-coded rounds
-		
-		Stage stageNo = srepository.findCurrentStage();
+		Stage stageNo = this.resetStageRepo();
+
 		Round round = new Round("No", stageNo);
 		rrepository.save(round);
 		
@@ -211,7 +211,7 @@ public class RoundRepositoryTests {
 	// Test delete functionality for round repo:
 	@Test
 	public void testDeleteRound() {
-		Stage stageNo = srepository.findCurrentStage();
+		Stage stageNo = this.resetStageRepo();
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("No", stageNo);
 
@@ -228,5 +228,16 @@ public class RoundRepositoryTests {
 		Round round = rrepository.findRoundsByStage(stageNo.getStageid()).get(0);
 		rrepository.delete(round);
 		assertThat(rrepository.findAll()).isEmpty();
+	}
+	
+	private Stage resetStageRepo() {
+		srepository.deleteAll();
+		List<Stage> stageNullNo = srepository.findByStage("No");
+		assertThat(stageNullNo).hasSize(0);
+		
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+
+		return stageNo;
 	}
 }
