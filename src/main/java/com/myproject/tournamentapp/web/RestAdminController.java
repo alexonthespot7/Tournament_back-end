@@ -21,10 +21,10 @@ import com.myproject.tournamentapp.forms.RoundsForAdminForm;
 import com.myproject.tournamentapp.forms.UsersPageAdminForm;
 import com.myproject.tournamentapp.model.Round;
 import com.myproject.tournamentapp.model.Stage;
-import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.service.BracketService;
 import com.myproject.tournamentapp.service.RoundService;
+import com.myproject.tournamentapp.service.StageService;
 import com.myproject.tournamentapp.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,8 +57,7 @@ public class RestAdminController {
 	private BracketService bracketService;
 
 	@Autowired
-	private StageRepository srepository;
-	
+	private StageService stageService;	
 	
 	@Operation(summary = "Gets the list of users", description = "The method to fetch the list of all users. List contains users' sensitive data, thus should be treated carefully.")
 	@ApiResponses(value = { 
@@ -166,7 +165,9 @@ public class RestAdminController {
 	})
 	@RequestMapping(value = "/stages", method = RequestMethod.GET)
 	public @ResponseBody List<Stage> getStagesForAdmin() {
-		return srepository.findAll();
+		
+		return stageService.getStagesForAdmin();
+	
 	}
 
 	// method to display rounds for the admin
@@ -183,7 +184,9 @@ public class RestAdminController {
 	})
 	@RequestMapping(value = "/rounds", method = RequestMethod.GET)
 	public @ResponseBody RoundsForAdminForm getRoundsInfoForAdmin() {
+		
 		return roundService.getRoundsInfoForAdmin();
+	
 	}
 
 	// method to set the result of the round for admin

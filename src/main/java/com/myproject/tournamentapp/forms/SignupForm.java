@@ -20,7 +20,19 @@ public class SignupForm {
     @NotBlank(message = "Email is mandatory")
     @Email(message = "Invalid email format")
     private String email;
+    
+    public SignupForm() {}
 	
+	public SignupForm(boolean isCompetitor,
+			@Size(max = 15, message = "Username must be less than or equal to 15 characters") @Pattern(regexp = "\\S+", message = "Username cannot contain whitespace") @NotBlank(message = "Username is mandatory") String username,
+			@NotBlank(message = "Password is mandatory") String password,
+			@NotBlank(message = "Email is mandatory") @Email(message = "Invalid email format") String email) {
+		this.isCompetitor = isCompetitor;
+		this.username = username;
+		this.password = password;
+		this.email = email;
+	}
+
 	public boolean getIsCompetitor() {
 		return isCompetitor;
 	}

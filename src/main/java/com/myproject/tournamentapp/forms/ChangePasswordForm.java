@@ -7,6 +7,8 @@ public class ChangePasswordForm {
 	
     @NotBlank(message = "Password is mandatory")
     private String newPassword;
+    
+    public ChangePasswordForm() {}
 
     public ChangePasswordForm(String oldPassword, String newPassword) {
     	this.oldPassword = oldPassword;

@@ -21,6 +21,7 @@ import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.VerificationCodeForm;
 import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.UserRepository;
+import com.myproject.tournamentapp.service.RoundService;
 import com.myproject.tournamentapp.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,6 +50,9 @@ public class RestPublicController {
 
 	@Autowired
 	private UserService userService;
+	
+	@Autowired
+	private RoundService roundService;
 
 	// Method to send the quantity of the rounds to the main page to conditionally
 	// render buttons
@@ -63,9 +67,7 @@ public class RestPublicController {
 	@RequestMapping(value = "/roundsquantity", method = RequestMethod.GET)
 	public @ResponseBody String getRoundsQuantity() {
 
-		int roundQuantity = rrepository.findAll().size();
-
-		return String.valueOf(roundQuantity);
+		return roundService.getRoundsQuantity();
 
 	}
 

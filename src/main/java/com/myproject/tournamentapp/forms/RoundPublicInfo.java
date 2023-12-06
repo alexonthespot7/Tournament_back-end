@@ -6,6 +6,8 @@ public class RoundPublicInfo {
 	private String stage;
 	private String result;
 	
+	public RoundPublicInfo() {}
+	
 	public RoundPublicInfo(String usernameOfCompetitor1, String usernameOfCompetitor2, String stage, String result) {
 		this.usernameOfCompetitor1 = usernameOfCompetitor1;
 		this.usernameOfCompetitor2 = usernameOfCompetitor2;

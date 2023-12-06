@@ -30,6 +30,13 @@ public class RoundService {
 	@Autowired
 	private UserRepository urepository;
 	
+	public String getRoundsQuantity() {
+		int roundQuantity = rrepository.findAll().size();
+
+		return String.valueOf(roundQuantity);
+	}
+
+	
 	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
 		List<Round> allRounds = rrepository.findAllCurrentAndPlayed();
 		

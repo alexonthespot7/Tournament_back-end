@@ -6,6 +6,8 @@ public class BracketPageInfo {
 	private List<StageForBracketInfo> stages;
 	private String winner;
 	
+	public BracketPageInfo() {}
+	
 	public BracketPageInfo(List<StageForBracketInfo> stages, String winner) {
 		this.stages = stages;
 		this.winner = winner;

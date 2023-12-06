@@ -11,6 +11,8 @@ public class UsersPageAdminForm {
 	private boolean showReset;
 	private boolean isBracketMade;
 	
+	public UsersPageAdminForm() {}
+	
 	public UsersPageAdminForm(List<User> users, boolean showMakeBracket, boolean showMakeAllCompetitors,
 			boolean showReset, boolean isBracketMade) {
 		this.users = users;

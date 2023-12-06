@@ -41,6 +41,9 @@ public class TournamentApplication {
 			User user3 = new User("user3", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq",
 					"USER", false, true, stageRepository.findByStage("No").get(0), "user3.mail@test.com",
 					true, null);
+			User user4 = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq",
+					"USER", false, true, stageRepository.findByStage("No").get(0), "user4.mail@test.com",
+					false, "example_code");
 			
 			
 			
@@ -50,6 +53,7 @@ public class TournamentApplication {
 			uRepository.save(user1);
 			uRepository.save(user2);
 			uRepository.save(user3);
+			uRepository.save(user4);
 		};
 	}
 }

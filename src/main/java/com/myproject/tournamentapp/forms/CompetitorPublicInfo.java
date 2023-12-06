@@ -5,6 +5,8 @@ public class CompetitorPublicInfo {
 	private boolean isOut;
 	private String stage;
 	
+	public CompetitorPublicInfo() {}
+	
 	public CompetitorPublicInfo(String username, boolean isOut, String stage) {
 		this.username = username;
 		this.isOut = isOut;

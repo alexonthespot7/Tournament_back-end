@@ -9,6 +9,8 @@ public class RoundsForAdminForm {
 	private boolean doesWinnerExist;
 	private boolean isCurrentStageFinished;
 	
+	public RoundsForAdminForm() {}
+	
 	public RoundsForAdminForm(List<Round> allRounds, boolean doesWinnerExist, boolean isCurrentStageFinished) {
 		this.allRounds = allRounds;
 		this.doesWinnerExist = doesWinnerExist;

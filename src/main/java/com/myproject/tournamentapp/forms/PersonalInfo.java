@@ -11,6 +11,8 @@ public class PersonalInfo {
 	private int roundsQuantity; //if the total rounds quantity is 0, then the bracket wasn't made yet
 	private List<RoundPublicInfo> publicRounds;
 	
+	public PersonalInfo() {}
+	
 	public PersonalInfo(String username, String email, boolean isOut, String stage,
 			boolean isCompetitor, int roundsQuantity, List<RoundPublicInfo> publicRounds) {
 		this.username = username;

@@ -6,6 +6,8 @@ public class StageForBracketInfo {
 	private String stage;
 	private boolean isCurrent;
 	private List<RoundPublicInfo> rounds;
+	
+	public StageForBracketInfo() {}
 
 	public StageForBracketInfo(String stage, boolean isCurrent, List<RoundPublicInfo> rounds) {
 		this.stage = stage;
