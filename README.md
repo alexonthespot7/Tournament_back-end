@@ -7,6 +7,7 @@
 * [Usage Guide](#usage-guide)
 * [Features](#features)
 * [Technologies Used](#technologies-used)
+* [Dependencies](#dependencies)
 * [Documentation](#documentation)
 * [License](#license)
 
@@ -20,6 +21,8 @@ To activate smtp service functionality you will need to set the following env va
 3. Run the following command in a terminal window (in the complete) directory:<br>
 ```./mvnw spring-boot:run```<br>
 5. Navigate to localhost:8080
+
+\* The default verification link sent to the user's email address uses the default React web address (http://localhost:3000) as its base.<br> You have the option to modify this base URL in the MailService class
 
 ## Features
 - Restful Endpoints: Provides RESTful API endpoints for seamless communication with the front-end application.
@@ -43,6 +46,24 @@ To activate smtp service functionality you will need to set the following env va
 - RESTful APIs
 - JWT (JSON Web Token)
 - smtp
+
+## Dependencies
+- **spring-boot-starter-web**: Starter for building web applications using Spring MVC.
+
+- **spring-boot-devtools**: Provides development-time tools to enhance developer productivity. Automatically triggers application restarts, among other features.
+- **spring-boot-starter-data-jpa**: Starter for using Spring Data JPA for database access.
+- **h2**: H2 Database Engine, an in-memory relational database for development and testing purposes.
+- **spring-boot-starter-security**: Starter for enabling Spring Security and authentication/authorization features.
+- **spring-boot-starter-mail**: Starter for sending emails using Spring's JavaMailSender.
+- **jjwt-api**: JSON Web Token (JWT) API provided by JJWT library.
+- **jjwt-impl**: Implementation of the JSON Web Token (JWT) provided by JJWT library (runtime dependency).
+- **jjwt-jackson**: Jackson integration for JSON Web Token (JWT) provided by JJWT library (runtime dependency).
+- **spring-boot-starter-test**: Starter for testing Spring Boot applications.
+- **spring-security-test**: Spring Security testing support for integration testing.
+- **junit-jupiter-api**: JUnit 5 API for writing tests.
+- **junit-jupiter-engine**: JUnit 5 test engine implementation.
+- **spring-boot-starter-validation**: Starter for using validation in Spring Boot applications.
+- **springdoc-openapi-starter-webmvc-ui**: Starter for adding OpenAPI 3 documentation and Swagger UI support to your Spring Boot application.
 
 ## Documentation
 The documentation for this project is made with Swagger and can be accessed after launching the project at the following endpoint: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
