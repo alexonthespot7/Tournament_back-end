@@ -33,7 +33,7 @@ public class StageRepositoryTests {
 	@Test
 	public void testfindAll() {
 		srepository.deleteAll(); // deleting all hard-coded stages
-		
+
 		List<Stage> stagesEmpty = srepository.findAll();
 		assertThat(stagesEmpty).isEmpty();
 
@@ -47,7 +47,7 @@ public class StageRepositoryTests {
 	@Test
 	public void testFindAllStages() {
 		srepository.deleteAll(); // deleting all hard-coded stages
-		
+
 		List<Stage> allStagesEmpty = srepository.findAllStages();
 		assertThat(allStagesEmpty).isEmpty();
 
@@ -63,7 +63,7 @@ public class StageRepositoryTests {
 	@Test
 	public void testFindCurrentStage() {
 		srepository.deleteAll(); // deleting all hard-coded stages
-		
+
 		Stage currentStageNotFound = srepository.findCurrentStage();
 		assertThat(currentStageNotFound).isNull();
 
@@ -75,19 +75,24 @@ public class StageRepositoryTests {
 		assertThat(currentStage).isNotNull();
 		assertThat(currentStage.getStage()).isEqualTo("No");
 	}
-	
+
 	// Test stage update functionality:
 	@Test
-	public void testUpdateStage() {		
-		Stage stageNo = srepository.findCurrentStage();
-		assertThat(stageNo.getIsCurrent()).isTrue();
+	public void testUpdateStage() {
+		srepository.deleteAll(); // deleting all hard-coded stages
+		List<Stage> stageNullNo = srepository.findByStage("No");
+		assertThat(stageNullNo).hasSize(0);
 		
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+		assertThat(stageNo.getIsCurrent()).isTrue();
+
 		stageNo.setIsCurrent(false);
 		srepository.save(stageNo);
 
 		Stage stageNull = srepository.findCurrentStage();
 		assertThat(stageNull).isNull();
-		
+
 		Stage updatedStage = srepository.findByStage("No").get(0);
 		assertThat(updatedStage.getIsCurrent()).isFalse();
 	}
@@ -96,12 +101,12 @@ public class StageRepositoryTests {
 	@Test
 	public void testDeletionStage() {
 		srepository.deleteAll(); // deleting all hard-coded stages
-		
+
 		List<Stage> stagesEmpty = srepository.findAll();
 		assertThat(stagesEmpty).isEmpty();
 
 		Stage stageNo = new Stage("No", true);
-		srepository.save(stageNo);		
+		srepository.save(stageNo);
 		srepository.delete(stageNo);
 		stagesEmpty = srepository.findByStage("No");
 		assertThat(stagesEmpty).hasSize(0);
@@ -112,8 +117,8 @@ public class StageRepositoryTests {
 		srepository.save(stageNo);
 		srepository.save(stage1);
 		srepository.save(stage2);
-		
-		//testing method that deletes all stages except 'no' stage
+
+		// testing method that deletes all stages except 'no' stage
 		srepository.deleteAllStages();
 		List<Stage> stagesWithNoOnly = srepository.findAll();
 		assertThat(stagesWithNoOnly).hasSize(1);

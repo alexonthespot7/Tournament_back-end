@@ -290,7 +290,9 @@ public class UserRepositoryTests {
 
 	private Stage resetStageRepo() {
 		srepository.deleteAll();
-
+		List<Stage> stageNullNo = srepository.findByStage("No");
+		assertThat(stageNullNo).hasSize(0);
+		
 		Stage stageNo = new Stage("No", true);
 		srepository.save(stageNo);
 
