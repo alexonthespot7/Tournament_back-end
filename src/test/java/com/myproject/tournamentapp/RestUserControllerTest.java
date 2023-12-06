@@ -3,6 +3,7 @@ package com.myproject.tournamentapp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest
@@ -57,9 +59,29 @@ public class RestUserControllerTest {
 	@Autowired
 	private RoundRepository rrepository;
 
-	@BeforeAll
+	@BeforeEach
 	public void loginAndRetrieveToken() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";
+		Stage stageNo = this.resetStageUserAndRoundRepos();
+
+		// creating 5 users: 1 admin, 1 unverified user, 3 verified competitors;
+		User userAdmin = new User("admin", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "ADMIN",
+				true, false, stageNo, "admin.mail@test.com", true, null);
+
+		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user1.mail@test.com", true, null);
+		User user2 = new User("user2", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user2.mail@test.com", true, null);
+		User user3 = new User("user3", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user3.mail@test.com", true, null);
+		User user4 = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
+				true, false, stageNo, "user4.mail@test.com", false, "example_code");
+
+		urepository.save(userAdmin);
+		urepository.save(user1);
+		urepository.save(user2);
+		urepository.save(user3);
+		urepository.save(user4);
 
 		// Create the login request body
 		LoginForm loginForm = new LoginForm("user1", "asas2233");
@@ -83,7 +105,7 @@ public class RestUserControllerTest {
 		// here I use the amount of hard-coded competitors to check the size of
 		// competitors array
 		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
-				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(4));
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(3));
 	}
 
 	@Test
@@ -91,13 +113,14 @@ public class RestUserControllerTest {
 	public void testGetPersonalInfoById() throws Exception {
 		String requestURI = END_POINT_PATH + "/competitors/";
 
+		User user1 = urepository.findByUsername("user1");
+		Long user1Id = user1.getId();
 		// wrong userid in path case:
-		String requestURIWrongId = requestURI + "1";
+		String requestURIWrongId = requestURI + user1Id + "1";
 		mockMvc.perform(get(requestURIWrongId).header("Authorization", jwtToken)).andExpect(status().isForbidden());
 
 		// good request case:
-		// here I use the hard-coded user1 authentication, which has userid 2.
-		String requestURIGood = requestURI + "2";
+		String requestURIGood = requestURI + user1Id;
 		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
 				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"));
 	}
@@ -108,19 +131,23 @@ public class RestUserControllerTest {
 	public void testUpdateUser() throws Exception {
 		String requestURI = END_POINT_PATH + "/updateuser/";
 
-		// wrong userid in path case:
-		String requestURIWrongUserId = requestURI + "1";
+		User user1 = urepository.findByUsername("user1");
+		assertThat(user1.getIsCompetitor()).isTrue();
 
-		PersonalInfo personalInfoGood = new PersonalInfo("user1", "mail@test.com", false, "No", false, 0, null);
+		Long user1Id = user1.getId();
+
+		PersonalInfo personalInfoGood = new PersonalInfo(user1.getUsername(), user1.getEmail(), false,
+				user1.getStage().getStage(), false, 0, null);
 		String requestBodyGood = objectMapper.writeValueAsString(personalInfoGood);
+
+		// wrong userid in path case:
+		String requestURIWrongUserId = requestURI + user1Id + "1";
+
 		mockMvc.perform(put(requestURIWrongUserId).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBodyGood)).andExpect(status().isForbidden());
 
 		// good request case:
-		// here I use the hard-coded user1 authentication, which has userid 2.
-		User userBeforeUpdate = urepository.findByUsername("user1");
-		assertThat(userBeforeUpdate.getIsCompetitor()).isTrue();
-		String requestURIGood = requestURI + "2";
+		String requestURIGood = requestURI + user1Id;
 
 		mockMvc.perform(put(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
 				.content(requestBodyGood)).andExpect(status().isOk());
@@ -138,34 +165,33 @@ public class RestUserControllerTest {
 		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isAccepted());
 
 		// good case (first let's add some rounds to repo first):
-		Stage stageSemiFinal = new Stage("1/2", true);
-		Stage stageFinal = new Stage("fina");
-		Stage stageNo = srepository.findCurrentStage();
-		stageNo.setIsCurrent(false);
-		srepository.save(stageSemiFinal);
-		srepository.save(stageFinal);
-		srepository.save(stageNo);
-		
-		Round round1 = new Round("No", stageSemiFinal);
-		Round round2 = new Round("No", stageSemiFinal);
-		Round round3 = new Round("No", stageFinal);
-		rrepository.save(round1);
-		rrepository.save(round2);
-		rrepository.save(round3);
+		this.createBracketDraft();
 
-		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk());
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$[0].result").value("No"))
+				.andExpect(MockMvcResultMatchers.jsonPath("$[0].stage").value("1/2"));
+
 	}
-	
+
 	@Test
 	@Order(5)
 	public void testGetBracketInfo() throws Exception {
 		String requestURI = END_POINT_PATH + "/bracket";
-		// good case (the rounds were added in previous test method:
-		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk());
-		
+
 		// bracket wasn't made yet case:
-		rrepository.deleteAll();
 		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isAccepted());
+
+		
+		
+		// good case (first let's add some rounds to repo first):
+		this.createBracketDraft();
+
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.winner").value(""))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.stages.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.stages[0].stage").value("1/2"));
+
 	}
 
 	@Test
@@ -193,6 +219,36 @@ public class RestUserControllerTest {
 		// Perform the login request and retrieve the token
 		mockMvc.perform(post("/api/login").contentType(MediaType.APPLICATION_JSON).content(requestBody))
 				.andExpect(status().isOk());
+	}
+
+	private Stage resetStageUserAndRoundRepos() {
+		rrepository.deleteAll();
+		urepository.deleteAll();
+		srepository.deleteAll();
+		List<Stage> stageNullNo = srepository.findByStage("No");
+		assertThat(stageNullNo).hasSize(0);
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+
+		return stageNo;
+	}
+	
+	private void createBracketDraft() {
+		Stage stageSemiFinal = new Stage("1/2", true);
+		Stage stageFinal = new Stage("final");
+		Stage stageNo = srepository.findCurrentStage();
+		stageNo.setIsCurrent(false);
+		srepository.save(stageSemiFinal);
+		srepository.save(stageFinal);
+		srepository.save(stageNo);
+
+		Round round1 = new Round("No", stageSemiFinal);
+		Round round2 = new Round("No", stageSemiFinal);
+		Round round3 = new Round("No", stageFinal);
+		rrepository.save(round1);
+		rrepository.save(round2);
+		rrepository.save(round3);
 	}
 
 }
