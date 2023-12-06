@@ -50,7 +50,7 @@ public class RestPublicControllerTest {
 	private StageRepository srepository;
 
 	@Autowired
-	private RoundRepository rrepoRepository;
+	private RoundRepository rrepository;
 
 	@Test
 	public void testGetRoundsQuantityMethod() throws Exception {
@@ -61,8 +61,8 @@ public class RestPublicControllerTest {
 
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("No", stageNo);
-		rrepoRepository.save(round1);
-		rrepoRepository.save(round2);
+		rrepository.save(round1);
+		rrepository.save(round2);
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string("2"));
 	}
@@ -212,7 +212,7 @@ public class RestPublicControllerTest {
 	}
 
 	private Stage resetStageUserAndRoundRepos() {
-		rrepoRepository.deleteAll();
+		rrepository.deleteAll();
 		urepository.deleteAll();
 		srepository.deleteAll();
 		List<Stage> stageNullNo = srepository.findByStage("No");
