@@ -12,16 +12,21 @@ import com.myproject.tournamentapp.forms.EmailForm;
 import com.myproject.tournamentapp.forms.LoginForm;
 import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.VerificationCodeForm;
+import com.myproject.tournamentapp.model.Round;
+import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
 
 import org.hamcrest.Matchers;
 
@@ -40,21 +45,41 @@ public class RestPublicControllerTest {
 
 	@Autowired
 	private UserRepository urepository;
-	
+
 	@Autowired
 	private StageRepository srepository;
 
-	
+	@Autowired
+	private RoundRepository rrepoRepository;
+
 	@Test
 	public void testGetRoundsQuantityMethod() throws Exception {
 		String requestURI = END_POINT_PATH + "/roundsquantity";
-		
+		Stage stageNo = this.resetStageUserAndRoundRepos();
+
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string("0"));
+
+		Round round1 = new Round("No", stageNo);
+		Round round2 = new Round("No", stageNo);
+		rrepoRepository.save(round1);
+		rrepoRepository.save(round2);
+
+		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string("2"));
 	}
 
 	@Test
 	public void testLogin() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";
+		Stage stageNo = this.resetStageUserAndRoundRepos();
+
+		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user1.mail@test.com", true, null);
+		urepository.save(user1);
+		Long user1Id = user1.getId();
+
+		User unverified = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
+				false, true, stageNo, "user4.mail@test.com", false, "example_code");
+		urepository.save(unverified);
 
 		// wrong username case
 		LoginForm loginFormWrongUsername = new LoginForm("messi", "asas2233");
@@ -81,7 +106,7 @@ public class RestPublicControllerTest {
 		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyGood))
 				.andExpect(status().isOk()).andExpect(header().exists("Authorization"))
 				.andExpect(header().string("Authorization", Matchers.containsString("Bearer")))
-				.andExpect(header().exists("Host")).andExpect(header().string("Host", Matchers.equalTo("2")))
+				.andExpect(header().exists("Host")).andExpect(header().string("Host", Matchers.equalTo(user1Id.toString())))
 				.andExpect(header().exists("Origin")).andExpect(header().string("Origin", Matchers.equalTo("user1")))
 				.andExpect(header().exists("Allow")).andExpect(header().string("Allow", Matchers.equalTo("USER")));
 	}
@@ -89,6 +114,11 @@ public class RestPublicControllerTest {
 	@Test
 	public void testSignup() throws Exception {
 		String requestURI = END_POINT_PATH + "/signup";
+		Stage stageNo = this.resetStageUserAndRoundRepos();
+		
+		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user1.mail@test.com", true, null);
+		urepository.save(user1);
 
 		// email is already in use case
 		SignupForm signupFormEmailInUse = new SignupForm(true, "userNew", "asas2233", "user1.mail@test.com");
@@ -121,7 +151,13 @@ public class RestPublicControllerTest {
 	@Test
 	public void testVerify() throws Exception {
 		String requestURI = END_POINT_PATH + "/verify";
+		
+		Stage stageNo = this.resetStageUserAndRoundRepos();
 
+		User unverified = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
+				false, true, stageNo, "user4.mail@test.com", false, "example_code");
+		urepository.save(unverified);
+		
 		// User not found by verification code case
 		VerificationCodeForm verificationFormUserNotFound = new VerificationCodeForm("wrong_code");
 		String requestBodyUserNotFound = objectMapper.writeValueAsString(verificationFormUserNotFound);
@@ -140,7 +176,17 @@ public class RestPublicControllerTest {
 	@Test
 	public void testResetPassword() throws Exception {
 		String requestURI = END_POINT_PATH + "/resetpassword";
-
+		
+		Stage stageNo = this.resetStageUserAndRoundRepos();
+		
+		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user1.mail@test.com", true, null);
+		urepository.save(user1);
+		
+		User unverified = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
+				false, true, stageNo, "user4.mail@test.com", false, "example_code");
+		urepository.save(unverified);
+		
 		// User not found by email case
 		EmailForm emailFormUserNotFound = new EmailForm("wrong@email.com");
 		String requestBodyUserNotFound = objectMapper.writeValueAsString(emailFormUserNotFound);
@@ -149,11 +195,7 @@ public class RestPublicControllerTest {
 				.andExpect(status().isBadRequest());
 
 		// User is not verified case
-		Stage stageNo = srepository.findCurrentStage();
-		User unverifiedUser = new User("usero", "hashpwd", "USER", false, true, stageNo, "unverified@mail.com", false, "some_code_");
-		urepository.save(unverifiedUser); 
-		
-		EmailForm emailFormUnverified = new EmailForm("unverified@mail.com");
+		EmailForm emailFormUnverified = new EmailForm("user4.mail@test.com");
 		String requestBodyUnverified = objectMapper.writeValueAsString(emailFormUnverified);
 
 		mockMvc.perform(put(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyUnverified))
@@ -167,5 +209,18 @@ public class RestPublicControllerTest {
 		 * mockMvc.perform(put(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyGood))
 		 * .andExpect(status().isOk());
 		 */
+	}
+
+	private Stage resetStageUserAndRoundRepos() {
+		rrepoRepository.deleteAll();
+		urepository.deleteAll();
+		srepository.deleteAll();
+		List<Stage> stageNullNo = srepository.findByStage("No");
+		assertThat(stageNullNo).hasSize(0);
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+
+		return stageNo;
 	}
 }
