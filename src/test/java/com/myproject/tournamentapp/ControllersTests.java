@@ -25,17 +25,17 @@ class ControllersTests {
 	private RestPublicController restPublicController;
 	
 	@Test
-	void contextLoads() throws Exception {
+	public void contextLoads() throws Exception {
 		assertThat(restAdminController).isNotNull();
 	}
 	
 	@Test
-	void contextLoadsTwo() throws Exception {
+	public void contextLoadsTwo() throws Exception {
 		assertThat(restUserController).isNotNull();
 	}
 	
 	@Test
-	void contextLoadsThree() throws Exception {
+	public void contextLoadsThree() throws Exception {
 		assertThat(restPublicController).isNotNull();
 	}
 
