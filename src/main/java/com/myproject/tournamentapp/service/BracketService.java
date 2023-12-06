@@ -24,7 +24,6 @@ import com.myproject.tournamentapp.model.UserRepository;
 
 @Service
 public class BracketService {
-	
 	@Autowired
 	private UserRepository urepository;
 
@@ -35,20 +34,21 @@ public class BracketService {
 	private StageRepository srepository;
 
 	@Autowired
-	private RoundService roundService;
+	private MakeRoundsPublicService makeRoundsPublicService;
+
+	@Autowired
+	private QuantityService quantityService;
 
 	public BracketPageInfo getBracketInfo() {
-				
-		List<Round> allRounds = rrepository.findAll();
-				
-		if (allRounds.isEmpty())
-			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
-		
-		List<StageForBracketInfo> stagesWithRounds = findStagesWithRounds();
-		
-		String winner = findWinner();
+		int roundsQuantity = quantityService.findRoundsQuantity();
 
-		
+		if (roundsQuantity == 0)
+			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
+
+		List<StageForBracketInfo> stagesWithRounds = this.findStagesWithRounds();
+
+		String winner = this.findWinner();
+
 		BracketPageInfo bracketInfo = new BracketPageInfo(stagesWithRounds, winner);
 
 		return bracketInfo;
@@ -57,7 +57,6 @@ public class BracketService {
 	private List<StageForBracketInfo> findStagesWithRounds() {
 		// all stages except for 'no' stage
 		List<Stage> allStages = srepository.findAllStages();
-				
 
 		// The list of stages which would include the stage's rounds
 		List<StageForBracketInfo> stagesWithRounds = new ArrayList<>();
@@ -67,29 +66,33 @@ public class BracketService {
 		List<RoundPublicInfo> currentStagePublicRounds;
 
 		for (Stage stage : allStages) {
-			currentStagePublicRounds = roundService.makeRoundsPublic(rrepository.findRoundsByStage(stage.getStageid()));
+			Long stageId = stage.getStageid();
+			List<Round> stageRoundsWithSensitiveData = rrepository.findRoundsByStage(stageId);
+			
+			currentStagePublicRounds = makeRoundsPublicService.makeRoundsPublic(stageRoundsWithSensitiveData);
 
 			stageWithRounds = new StageForBracketInfo(stage.getStage(), stage.getIsCurrent(), currentStagePublicRounds);
 			stagesWithRounds.add(stageWithRounds);
 		}
-		
 
 		return stagesWithRounds;
 	}
 
 	private String findWinner() {
 		String winner = "";
-		
-		String currentStage = srepository.findCurrentStage().getStage();
-		
-		int roundsQuantity = rrepository.findAll().size();
 
-		if (currentStage.equals("No") && roundsQuantity > 0) {
+		Stage currentStage = srepository.findCurrentStage();
+		
+		String currentStageValue = currentStage.getStage();
+
+		int roundsQuantity = quantityService.findRoundsQuantity();
+
+		if (currentStageValue.equals("No") && roundsQuantity > 0) {
 
 			Round finalOf = rrepository.findFinal();
 
 			String result = finalOf.getResult();
-			
+
 			if (result.indexOf(" ") != -1) {
 				winner = result.substring(0, result.indexOf(" "));
 			}
@@ -101,27 +104,30 @@ public class BracketService {
 	@Transactional
 	public ResponseEntity<?> makeBracket() {
 		// check if the bracket wasn't made yet, and there are more than two competitors
-		if (!(rrepository.findAll().size() == 0 && urepository.findAllCompetitors().size() > 2))
+		int roundsQuantity = quantityService.findRoundsQuantity();
+		int competitorsQuantity = quantityService.findCompetitorsQuantity();
+
+		if (!(roundsQuantity == 0 && competitorsQuantity > 2))
 			return new ResponseEntity<>("The bracket was already made or there are less than 3 competitors",
 					HttpStatus.NOT_ACCEPTABLE);
 
 		// making sure that all admins are not competitors
-		excludeAdminsFromCompetitors();
+		this.excludeAdminsFromCompetitors();
 
 		// deleting all unverified users
-		deleteUnverifiedUsers();
+		this.deleteUnverifiedUsers();
 
 		// Retrieving list of competitors from user table (only verified users)
 		List<User> competitors = urepository.findAllCompetitors();
 
-		int firstStageRoundsQuantity = findAmountOfRoundsInFirstStage(competitors);
+		int firstStageRoundsQuantity = this.findAmountOfRoundsInFirstStage(competitors);
 
-		Stage firstStage = createStages(firstStageRoundsQuantity);
+		Stage firstStage = this.createStages(firstStageRoundsQuantity);
 
-		List<User[]> pairs = assignUsersToPairsOfFirstStage(firstStageRoundsQuantity, competitors, firstStage);
+		List<User[]> pairs = this.assignUsersToPairsOfFirstStage(firstStageRoundsQuantity, competitors, firstStage);
 
 		// creating rounds for the first stage and populating them with the users
-		createRounds(firstStageRoundsQuantity, pairs, firstStage);
+		this.createRounds(firstStageRoundsQuantity, pairs, firstStage);
 
 		return new ResponseEntity<>("Play-off bracket was made successfully", HttpStatus.OK);
 	}
@@ -241,36 +247,74 @@ public class BracketService {
 	}
 
 	private void createRounds(int firstStageRoundsQuantity, List<User[]> pairs, Stage firstStage) {
+		Round round;
+		String result;
+		User user1;
+		User user2;
+
 		for (int i = 0; i < firstStageRoundsQuantity; i++) {
+			// case when there is only one contestant in the round, therefore the result is
+			// autowin
 			if (pairs.get(i)[1] == null) {
-				rrepository
-						.save(new Round(pairs.get(i)[0].getUsername() + " autowin", pairs.get(i)[0], null, firstStage));
+				result = pairs.get(i)[0].getUsername() + " autowin";
+				user1 = pairs.get(i)[0];
+				user2 = null;
+
+				round = new Round(result, user1, user2, firstStage);
+				rrepository.save(round);
 				continue;
 			}
-			rrepository.save(new Round("No", pairs.get(i)[0], pairs.get(i)[1], firstStage));
+
+			// normal case with two contestants: the result is No
+			result = "No";
+			user1 = pairs.get(i)[0];
+			user2 = pairs.get(i)[1];
+
+			round = new Round(result, user1, user2, firstStage);
+
+			rrepository.save(round);
 		}
 
 		// creating all the rounds until final with null instead of competitors
 		int roundCount = firstStageRoundsQuantity / 2;
+		Stage stageToHandle;
 		while (roundCount > 1) {
 			for (int i = 0; i < roundCount; i++) {
-				rrepository.save(new Round("No", null, null, srepository.findByStage("1/" + roundCount).get(0)));
+				result = "No";
+				stageToHandle = srepository.findByStage("1/" + roundCount).get(0);
+				user1 = null;
+				user2 = null;
+				
+				round = new Round(result, user1, user2, stageToHandle);
+				
+				rrepository.save(round);
 			}
 			roundCount /= 2;
 		}
-		rrepository.save(new Round("No", null, null, srepository.findByStage("final").get(0)));
+		
+		//creating the final round
+		Stage finalStage = srepository.findByStage("final").get(0);
+		result = "No";
+		user1 = null;
+		user2 = null;
+		
+		round = new Round(result, user1, user2, finalStage);
+		
+		rrepository.save(round);
 	}
 
 	@Transactional
 	public ResponseEntity<?> resetAll() {
-		if (rrepository.findAll().size() == 0)
+		int roundsQuantity = quantityService.findRoundsQuantity();
+		
+		if (roundsQuantity == 0)
 			return new ResponseEntity<>("There is nothing to reset yet", HttpStatus.CONFLICT);
 
-		resetUsers();
+		this.resetUsers();
 
 		rrepository.deleteAll();
 
-		resetStages();
+		this.resetStages();
 
 		return new ResponseEntity<>("Everything was reset successfully", HttpStatus.OK);
 	}
@@ -283,7 +327,9 @@ public class BracketService {
 				continue;
 			}
 
-			user.setStage(srepository.findByStage("No").get(0));
+			Stage stageNo = srepository.findByStage("No").get(0);
+			
+			user.setStage(stageNo);
 			user.setIsCompetitor(false);
 			user.setIsOut(true);
 			urepository.save(user);

@@ -14,6 +14,8 @@ public class StageService {
 	private StageRepository srepository;
 	
 	public List<Stage> getStagesForAdmin() {
+		
 		return srepository.findAll();
+	
 	}
 }

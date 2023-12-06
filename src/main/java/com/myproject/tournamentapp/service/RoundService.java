@@ -1,13 +1,11 @@
 package com.myproject.tournamentapp.service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.myproject.tournamentapp.forms.RoundPublicInfo;
@@ -29,7 +27,13 @@ public class RoundService {
 
 	@Autowired
 	private UserRepository urepository;
-	
+
+	@Autowired
+	private QuantityService quantityService;
+
+	@Autowired
+	private MakeRoundsPublicService makeRoundsPublicService;
+
 	public String getRoundsQuantity() {
 		List<Round> rounds = rrepository.findAll();
 		int roundsQuantity = rounds.size();
@@ -37,48 +41,64 @@ public class RoundService {
 		return String.valueOf(roundsQuantity);
 	}
 
-	
 	public List<RoundPublicInfo> getPublicInfoOfAllRounds() {
 		List<Round> allRounds = rrepository.findAllCurrentAndPlayed();
-		
+
 		if (allRounds.isEmpty())
 			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
 
-		List<RoundPublicInfo> allPublicRounds = makeRoundsPublic(allRounds);
+		List<RoundPublicInfo> allPublicRounds = makeRoundsPublicService.makeRoundsPublic(allRounds);
 
 		return allPublicRounds;
 	}
 
-
-	public @ResponseBody RoundsForAdminForm getRoundsInfoForAdmin() {
+	public RoundsForAdminForm getRoundsInfoForAdmin() {
 
 		List<Round> allRounds = rrepository.findAll();
 
 		if (allRounds.isEmpty())
 			throw new ResponseStatusException(HttpStatus.ACCEPTED, "The bracket wasn't made yet");
 
-		boolean isCurrentStageFinished = findIsCurrentStageFinished();
+		boolean isCurrentStageFinished = this.findIsCurrentStageFinished();
+
+		boolean isCurrentStageNoStage = this.findIsCurrentStageNoStage();
+		int roundsQuantity = quantityService.findRoundsQuantity();
 
 		// this flag indicates whether to show set result column or not
-		boolean doesWinnerExist = srepository.findCurrentStage().getStage().equals("No")
-				&& rrepository.findAll().size() > 0;
+		boolean doesWinnerExist = isCurrentStageNoStage && roundsQuantity > 0;
 
 		RoundsForAdminForm roundsFormAdmin = new RoundsForAdminForm(allRounds, doesWinnerExist, isCurrentStageFinished);
 
 		return roundsFormAdmin;
 	}
 
+	private boolean findIsCurrentStageNoStage() {
+		Stage currentStage = srepository.findCurrentStage();
+		String currentStageValue = currentStage.getStage();
+		boolean isCurrentStageNoStage = currentStageValue.equals("No");
+
+		return isCurrentStageNoStage;
+	}
+
 	private boolean findIsCurrentStageFinished() {
 		// Checking, if all the games in a current stage were played to allow admin to
 		// confirm stage results
+
+		boolean allRoundsInCurrentStageArePlayed = this.findAllRoundsInCurrentStageArePlayed();
+
+		// This flag indicates whether to show confirm stage results button or not;
+		boolean isCurrentStageFinished = allRoundsInCurrentStageArePlayed && !this.findIsCurrentStageNoStage();
+
+		return isCurrentStageFinished;
+	}
+
+	private boolean findAllRoundsInCurrentStageArePlayed() {
 		int playedInCurrentStageRounds = rrepository.quantityOfPlayedInCurrentStage();
 		int allCurrentStageRounds = rrepository.findQuantityOfGamesInCurrentStage();
 
-		// This flag indicates whether to show confirm stage results button or not;
-		boolean isCurrentStageFinished = playedInCurrentStageRounds == allCurrentStageRounds
-				&& !srepository.findCurrentStage().getStage().equals("No");
+		boolean allRoundsInCurrentStageArePlayed = playedInCurrentStageRounds == allCurrentStageRounds;
 
-		return isCurrentStageFinished;
+		return allRoundsInCurrentStageArePlayed;
 	}
 
 	public ResponseEntity<?> setRoundResultForAdmin(Long roundId, Round round) {
@@ -100,7 +120,7 @@ public class RoundService {
 
 		// now as we are saving the results to the database and everyone is able to see
 		// the results, we should update the competitors status as well
-		updateWinnerAndLooser(result, localRound);
+		this.updateWinnerAndLooser(result, localRound);
 
 		return new ResponseEntity<>("The round result was set successfully", HttpStatus.OK);
 	}
@@ -126,8 +146,13 @@ public class RoundService {
 		} else {
 			// the results are stored in the following pattern: <winner_username> win. E.g.
 			// "alex win", so the winner's username is right before the whitespace
-			String winnerUsername = result.substring(0, result.indexOf(" "));
-			if (localRound.getUser1().getUsername().equals(winnerUsername)) {
+			String winnerUsername = this.extractUsername(result);
+			User localRoundUser1 = localRound.getUser1();
+			String localRoundUser1Username = localRoundUser1.getUsername();
+
+			boolean isUser1Winner = localRoundUser1Username.equals(winnerUsername);
+
+			if (isUser1Winner) {
 				winner = localRound.getUser1();
 				looser = localRound.getUser2();
 			} else {
@@ -143,9 +168,7 @@ public class RoundService {
 	}
 
 	public ResponseEntity<?> confirmStageResults() {
-		int playedRoundsInCurrentStage = rrepository.quantityOfPlayedInCurrentStage();
-
-		if (!canConfirmStageResults(playedRoundsInCurrentStage))
+		if (!this.canConfirmStageResults())
 			return new ResponseEntity<>("Cannot confirm stage results, untill all the rounds results are saved",
 					HttpStatus.NOT_ACCEPTABLE);
 
@@ -153,11 +176,12 @@ public class RoundService {
 		// more current
 		Stage stageToFinish = srepository.findCurrentStage();
 
+		int playedRoundsInCurrentStage = rrepository.quantityOfPlayedInCurrentStage();
 		// finding the next stage based on the played rounds quantity and making this
 		// stage current
-		Stage newCurrentStage = determineNewCurrentStage(playedRoundsInCurrentStage);
+		Stage newCurrentStage = this.determineNewCurrentStage(playedRoundsInCurrentStage);
 
-		updateStagesStatus(stageToFinish, newCurrentStage);
+		this.updateStagesStatus(stageToFinish, newCurrentStage);
 
 		// populating rounds of the next stage with winners of current stage (if it
 		// wasn't a final round):
@@ -171,31 +195,33 @@ public class RoundService {
 			return new ResponseEntity<>("The final stage results were successfully confirmed", HttpStatus.OK);
 		}
 
-		populateNextStageRounds(stageToFinish, newCurrentStage, currentRounds);
+		this.populateNextStageRounds(stageToFinish, newCurrentStage, currentRounds);
 
 		return new ResponseEntity<>("The current stage results were successfully confirmed", HttpStatus.OK);
 	}
 
-	private boolean canConfirmStageResults(int playedRoundsInCurrentStage) {
-		int allCurrRoundsInCurrentStage = rrepository.findQuantityOfGamesInCurrentStage();
+	private boolean canConfirmStageResults() {
+		boolean allRoundsInCurrentStageArePlayed = this.findAllRoundsInCurrentStageArePlayed();
 
 		// If the played rounds in the current stage amount equals to the all current
 		// stage rounds and the current stage is not 'No' stage
-		boolean isCurrentStageFinished = playedRoundsInCurrentStage == allCurrRoundsInCurrentStage
-				&& !srepository.findCurrentStage().getStage().equals("No");
+		boolean isCurrentStageFinished = allRoundsInCurrentStageArePlayed && !this.findIsCurrentStageNoStage();
 
 		return isCurrentStageFinished;
 	}
 
 	private Stage determineNewCurrentStage(int playedRoundsInCurrentStage) {
-
+		Stage newCurrentStage;
+		
 		if (playedRoundsInCurrentStage > 2) {
-			return srepository.findByStage("1/" + playedRoundsInCurrentStage / 2).get(0);
+			newCurrentStage = srepository.findByStage("1/" + playedRoundsInCurrentStage / 2).get(0);
 		} else if (playedRoundsInCurrentStage == 2) {
-			return srepository.findByStage("final").get(0);
+			newCurrentStage = srepository.findByStage("final").get(0);
 		} else {
-			return srepository.findByStage("No").get(0);
+			newCurrentStage = srepository.findByStage("No").get(0);
 		}
+		
+		return newCurrentStage;
 	}
 
 	private void updateStagesStatus(Stage stageToFinish, Stage newCurrentStage) {
@@ -207,7 +233,8 @@ public class RoundService {
 
 	private void populateNextStageRounds(Stage stageToFinish, Stage newCurrentStage, List<Round> currentRounds) {
 		// receiving the list of the rounds of the previous stage to get winners;
-		List<Round> previousRounds = rrepository.findRoundsByStage(stageToFinish.getStageid());
+		Long idOfPreviousStage = stageToFinish.getStageid();
+		List<Round> previousRounds = rrepository.findRoundsByStage(idOfPreviousStage);
 
 		// declaring the variables to be handled in the cycle
 		Round currentRound;
@@ -227,8 +254,8 @@ public class RoundService {
 			result1 = previousRounds.get(i * 2).getResult();
 			result2 = previousRounds.get(i * 2 + 1).getResult();
 
-			usernameOfWinner1 = extractUsername(result1);
-			usernameOfWinner2 = extractUsername(result2);
+			usernameOfWinner1 = this.extractUsername(result1);
+			usernameOfWinner2 = this.extractUsername(result2);
 
 			player1 = urepository.findByUsername(usernameOfWinner1);
 			player2 = urepository.findByUsername(usernameOfWinner2);
@@ -250,26 +277,6 @@ public class RoundService {
 	// the username can be received by spliting the string with whitespace
 	private String extractUsername(String result) {
 		return result.substring(0, result.indexOf(" "));
-	}
-
-	// method for restricting the list of rounds, which by default contains user's
-	// info
-	public List<RoundPublicInfo> makeRoundsPublic(List<Round> rounds) {
-		List<RoundPublicInfo> publicRounds = new ArrayList<>();
-		RoundPublicInfo publicRound;
-		// In round entity one of the competitor can be null, so I need to handle it as
-		// well
-		String username1;
-		String username2;
-
-		for (Round round : rounds) {
-			username1 = round.getUser1() == null ? null : round.getUser1().getUsername();
-			username2 = round.getUser2() == null ? null : round.getUser2().getUsername();
-			publicRound = new RoundPublicInfo(username1, username2, round.getStage().getStage(), round.getResult());
-			publicRounds.add(publicRound);
-		}
-
-		return publicRounds;
 	}
 
 }

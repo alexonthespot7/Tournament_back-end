@@ -32,7 +32,6 @@ import com.myproject.tournamentapp.forms.SignupForm;
 import com.myproject.tournamentapp.forms.UsersPageAdminForm;
 import com.myproject.tournamentapp.forms.VerificationCodeForm;
 import com.myproject.tournamentapp.model.Round;
-import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
@@ -43,14 +42,14 @@ public class UserService {
 	private UserRepository urepository;
 
 	@Autowired
-	private RoundRepository rrepository;
-
-	@Autowired
 	private StageRepository srepository;
 
 	@Autowired
-	private RoundService roundService;
+	private QuantityService quantityService;
 	
+	@Autowired
+	private MakeRoundsPublicService makeRoundsPublicService;
+
 	@Autowired
 	private MailService mailService;
 
@@ -59,25 +58,29 @@ public class UserService {
 
 	@Autowired
 	private AuthenticationManager authenticationManager;
-	
+
 	public static final String FRONT_END_URL = "http://localhost:3000";
 
 	public UsersPageAdminForm getUsersForAdmin() {
-		boolean isBracketMade = rrepository.findAll().size() != 0;
+		int roundsQuantity = quantityService.findRoundsQuantity();
+		
+		boolean isBracketMade = roundsQuantity != 0;
 
 		List<User> users = urepository.findAll();
 
 		// the flag to indicate whether to show make bracket button for admin or not.
 		// The bracket can be made if it wasn't made before and there are more than 2
-		// user
-		// competitors
-		boolean showMakeBracket = !isBracketMade && urepository.findAllCompetitors().size() > 2;
+		// user competitors
+		int competitorsQuantity = quantityService.findCompetitorsQuantity();
+
+		boolean showMakeBracket = !isBracketMade && competitorsQuantity > 2;
 
 		// the flag to indicate whether to show make all competitors button for admin.
 		// Admin can make all users competitors only if the bracket was not made yet and
 		// there are more verified users than there are already competitors
-		boolean showMakeAllCompetitors = !isBracketMade
-				&& urepository.findAllVerifiedUsers().size() != urepository.findAllCompetitors().size();
+		int verifiedUsersQuantity = this.findVerifiedUsersQuantity();
+
+		boolean showMakeAllCompetitors = !isBracketMade && verifiedUsersQuantity != competitorsQuantity;
 
 		// flag to indicate whether to show reset button on admin's users page. The
 		// reset can be activated only if there was a bracket made already
@@ -86,15 +89,23 @@ public class UserService {
 		return new UsersPageAdminForm(users, showMakeBracket, showMakeAllCompetitors, showReset, isBracketMade);
 	}
 
+	
+	private int findVerifiedUsersQuantity() {
+		List<User> allVerifiedUsers = urepository.findAllVerifiedUsers();
+		int verifiedUsersQuantity = allVerifiedUsers.size();
+		
+		return verifiedUsersQuantity;
+	}
+
 	public List<CompetitorPublicInfo> listCompetitorsPublicInfo() {
 		List<User> allUsers = urepository.findAll();
 
-		List<CompetitorPublicInfo> allCompetitors = this.makeAllPublicCompetitors(allUsers);
+		List<CompetitorPublicInfo> allCompetitors = this.makeAllUsersPublicCompetitors(allUsers);
 
 		return allCompetitors;
 	}
 
-	private List<CompetitorPublicInfo> makeAllPublicCompetitors(List<User> allUsers) {
+	private List<CompetitorPublicInfo> makeAllUsersPublicCompetitors(List<User> allUsers) {
 		List<CompetitorPublicInfo> allCompetitors = new ArrayList<>();
 		CompetitorPublicInfo competitor;
 
@@ -113,16 +124,16 @@ public class UserService {
 		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 
-		User user = findUserByAuth(auth);
+		User user = this.findUserByAuth(auth);
 
 		if (user == null || user.getId() != userId)
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have an access to this page");
 
-		List<Round> allRounds = findAllUsersRounds(user);
+		List<Round> allRoundsOfUser = this.findAllUsersRounds(user);
 
-		List<RoundPublicInfo> publicUserRounds = roundService.makeRoundsPublic(allRounds);
+		List<RoundPublicInfo> publicUserRounds = makeRoundsPublicService.makeRoundsPublic(allRoundsOfUser);
 
-		int roundsQuantity = rrepository.findAll().size();
+		int roundsQuantity = quantityService.findRoundsQuantity();
 
 		PersonalInfo personalInfoInstance = new PersonalInfo(user.getUsername(), user.getEmail(), user.getIsOut(),
 				user.getStage().getStage(), user.getIsCompetitor(), roundsQuantity, publicUserRounds);
@@ -224,7 +235,9 @@ public class UserService {
 	private void setCompetitorStatusSignup(User newUser, SignupForm signupForm) {
 		// check if the competition has already started and whether we should allow to
 		// set participant status
-		if (rrepository.findAll().size() == 0) {
+		int roundsQuantity = quantityService.findRoundsQuantity();
+		
+		if (roundsQuantity == 0) {
 			newUser.setIsOut(!signupForm.getIsCompetitor());
 			newUser.setIsCompetitor(signupForm.getIsCompetitor());
 		}
@@ -274,7 +287,9 @@ public class UserService {
 	private void setCompetitorStatus(User newUser, AddUserFormForAdmin userForm) {
 		// check if the competition has started and whether we can change a participant
 		// status
-		if (rrepository.findAll().size() == 0) {
+		int roundsQuantity = quantityService.findRoundsQuantity();
+
+		if (roundsQuantity == 0) {
 			newUser.setIsCompetitor(userForm.getIsCompetitor());
 			newUser.setIsOut(!userForm.getIsCompetitor());
 		}
@@ -315,7 +330,7 @@ public class UserService {
 		if (!auth.getPrincipal().getClass().toString().equals("class com.myproject.tournamentapp.MyUser"))
 			return new ResponseEntity<>("Not authenticated", HttpStatus.UNAUTHORIZED);
 
-		User user = findUserByAuth(auth);
+		User user = this.findUserByAuth(auth);
 
 		if (user == null)
 			return new ResponseEntity<>("Not authenticated", HttpStatus.UNAUTHORIZED);
@@ -325,7 +340,7 @@ public class UserService {
 		if (!bcEncoder.matches(changePasswordForm.getOldPassword(), user.getPasswordHash()))
 			return new ResponseEntity<>("The old password is incorrect", HttpStatus.FORBIDDEN);
 
-		updatePassword(bcEncoder, changePasswordForm, user);
+		this.updatePassword(bcEncoder, changePasswordForm, user);
 
 		return new ResponseEntity<>("The password was successfully changed", HttpStatus.OK);
 	}
@@ -379,13 +394,15 @@ public class UserService {
 
 		User user = optionalUser.get();
 
-		updateUsersInfo(user, personalInfo);
+		this.updateUsersInfo(user, personalInfo);
 
 		return new ResponseEntity<>("User info was updated successfully", HttpStatus.OK);
 	}
 
 	private void updateUsersInfo(User user, PersonalInfo personalInfo) {
-		if (rrepository.findAll().size() == 0) {
+		int roundsQuantity = quantityService.findRoundsQuantity();
+
+		if (roundsQuantity == 0) {
 			user.setIsCompetitor(personalInfo.isCompetitor());
 			user.setIsOut(!personalInfo.isCompetitor());
 		}
@@ -440,7 +457,9 @@ public class UserService {
 	}
 
 	private void updateCompetitorStatus(User currentUser, User updatedUser) {
-		if (rrepository.findAll().size() == 0) {
+		int roundsQuantity = quantityService.findRoundsQuantity();
+
+		if (roundsQuantity == 0) {
 			currentUser.setIsOut(!updatedUser.getIsCompetitor());
 			currentUser.setIsCompetitor(updatedUser.getIsCompetitor());
 		}
@@ -459,7 +478,9 @@ public class UserService {
 		if (user.getRole() == "ADMIN")
 			return new ResponseEntity<>("You cannot delete ADMIN", HttpStatus.CONFLICT);
 
-		if (rrepository.findAll().size() > 0 && user.getIsCompetitor())
+		int roundsQuantity = quantityService.findRoundsQuantity();
+
+		if (roundsQuantity > 0 && user.getIsCompetitor())
 			return new ResponseEntity<>("The competitor cannot be deleted after the competition has started",
 					HttpStatus.CONFLICT);
 
@@ -471,9 +492,14 @@ public class UserService {
 	public ResponseEntity<?> makeAllCompetitors() {
 		// check if the bracket was already made and if there are some verified users
 		// who are not competitors yet, assuming only users are participants;
-		boolean brackeWasMade = rrepository.findAll().size() != 0;
-		boolean areAllCompetitors = urepository.findAllVerifiedUsers().size() == urepository.findAllCompetitors()
-				.size();
+		int roundsQuantity = quantityService.findRoundsQuantity();
+
+		boolean brackeWasMade = roundsQuantity != 0;
+		
+		int verifiedUsersQuantity = this.findVerifiedUsersQuantity();
+		int competitorsQuantity = quantityService.findCompetitorsQuantity();
+
+		boolean areAllCompetitors = verifiedUsersQuantity == competitorsQuantity;
 
 		if (brackeWasMade || areAllCompetitors)
 			return new ResponseEntity<>(
@@ -487,8 +513,8 @@ public class UserService {
 	}
 
 	private void makeUsersCompetitors() {
-		List<User> users = urepository.findAllVerifiedUsers();
-		for (User user : users) {
+		List<User> verifiedUsers = urepository.findAllVerifiedUsers();
+		for (User user : verifiedUsers) {
 			user.setIsCompetitor(true);
 			user.setIsOut(false);
 			urepository.save(user);
