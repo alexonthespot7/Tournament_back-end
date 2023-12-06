@@ -13,7 +13,7 @@ import com.myproject.tournamentapp.web.RestUserController;
 
 //smoke testing of Chess application controller and User controller
 @SpringBootTest
-class TournamentApplicationTests {
+class ControllersTests {
 
 	@Autowired
 	private RestAdminController restAdminController;
