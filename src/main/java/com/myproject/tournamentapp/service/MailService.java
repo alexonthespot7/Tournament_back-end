@@ -15,7 +15,7 @@ import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class MailService {
-	private static final String FRONT_END_URL = "http://localhost:3000";
+	private static final String FRONT_END_URL = "https://tournament-axos.netlify.app";
 
 	@Autowired
 	private JavaMailSender mailSender;
