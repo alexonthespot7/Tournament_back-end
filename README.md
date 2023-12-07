@@ -13,11 +13,12 @@
 
 ## Usage Guide
 1. Clone the project <br>```git clone https://github.com/alexonthespot7/Tournament_back-end.git```<br>
-2. Set the environmental variables<br>
-To activate smtp service functionality you will need to set the following env variables with some real data.<br>For that run the following commands in the command line:<br>
+2. Set the environmental variables (optional)<br>
+    1. To activate smtp service functionality you will need to set the following env variables with some real data.<br>For that run the following commands in the command line (or change them in the application.properties file):<br>
     ```$Env:SPRING_MAIL_HOST="your_smtp_host"```<br>
     ```$Env:SPRING_MAIL_USERNAME="your_smtp_username"```<br>
     ```$Env:SPRING_MAIL_PASSWORD="your_smtp_password"```<br>
+    2. You can use app without smtp service with some restrictions:<br>To signup user will need to ask admin to verify their account. The reset password functionality will also be unavailable
 3. Run the following command in a terminal window (in the complete) directory:<br>
 ```./mvnw spring-boot:run```<br>
 5. Navigate to localhost:8080
