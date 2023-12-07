@@ -5,7 +5,9 @@
 > The initial version of front-end side for this app was made with thymeleaf and can be found in [thymeleaf_version branch](https://github.com/alexonthespot7/Tournament_back-end/tree/thymeleaf_version)<br>
 > The production version is under [production branch](https://github.com/alexonthespot7/Tournament_back-end/tree/production)<br><br>
 >
-> The deployed application can be found [here](https://tournament-back-end.onrender.com). The response speed is quite low, as the free instance is used.
+> The deployed back-end side of the application can be found [here](https://tournament-back-end.onrender.com). The response speed is quite low, as the free instance is used.<br>
+> <br>
+> Fully deployed app with client- and server-side: [https://tournament-axos.netlify.app](https://tournament-axos.netlify.app/)
 
 ## Table of Contents
 * [Usage Guide](#usage-guide)
