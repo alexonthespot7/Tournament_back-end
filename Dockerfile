@@ -3,7 +3,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 FROM openjdk:21-jdk-slim
-ENV SPRING_CONFIG_NAME=application
+ENV SPRING_CONFIG_NAME=application,production
 COPY --from=build /target/tournamentapp-0.0.1-SNAPSHOT.jar tournamentapp.jar
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","tournamentapp.jar"]
