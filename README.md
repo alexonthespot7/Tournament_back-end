@@ -9,6 +9,7 @@
 * [Technologies Used](#technologies-used)
 * [Dependencies](#dependencies)
 * [Documentation](#documentation)
+* [Testing](#testing)
 * [License](#license)
 
 ## Usage Guide
@@ -21,7 +22,7 @@
     2. You can use app without smtp service with some restrictions:<br>To signup user will need to ask admin to verify their account. The reset password functionality will also be unavailable
 3. Run the following command in a terminal window (in the complete) directory:<br>
 ```./mvnw spring-boot:run```<br>
-5. Navigate to localhost:8080
+4. Navigate to localhost:8080
 
 \* The default verification link sent to the user's email address uses the default React web address (http://localhost:3000) as its base.<br> You have the option to modify this base URL in the MailService class
 
@@ -68,6 +69,16 @@
 
 ## Documentation
 The documentation for this project is made with Swagger and can be accessed after launching the project at the following endpoint: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+
+## Testing
+### Usage Guide
+1. Clone the project <br>```git clone https://github.com/alexonthespot7/Tournament_back-end.git```<br>
+2. Run the following command in a terminal window (in the complete) directory:<br>
+```./mvnw test```<br>
+### Info
+1. Controllers testing.
+2. Repositories testing: CRUD functionalities + custom queries.
+3. Rest endpoints methods testing.
 
 ## License
 This project is under the MIT License.
