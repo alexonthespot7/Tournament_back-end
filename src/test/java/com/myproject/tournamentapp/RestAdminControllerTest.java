@@ -3,15 +3,13 @@ package com.myproject.tournamentapp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -26,6 +24,8 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
+import jakarta.transaction.Transactional;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -35,12 +35,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Transactional
 public class RestAdminControllerTest {
 	private static final String END_POINT_PATH = "/api/admin";
+	private static final String MAKE_BRACKET_END_POINT = END_POINT_PATH + "/makebracket";
+	private static final String RESET_END_POINT = END_POINT_PATH + "/reset";
+	private static final String DELETE_END_POINT = END_POINT_PATH + "/deleteuser/";
 
 	private String jwtToken;
 
@@ -64,6 +67,27 @@ public class RestAdminControllerTest {
 	public void loginAndRetrieveToken() throws Exception {
 		String requestURI = "/api/login";
 
+		Stage stageNo = this.resetStageUserAndRoundRepos();
+
+		// creating 5 users: 1 admin, 1 unverified user, 3 verified competitors;
+		User userAdmin = new User("admin", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "ADMIN",
+				true, false, stageNo, "admin.mail@test.com", true, null);
+
+		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user1.mail@test.com", true, null);
+		User user2 = new User("user2", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user2.mail@test.com", true, null);
+		User user3 = new User("user3", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
+				true, stageNo, "user3.mail@test.com", true, null);
+		User user4 = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
+				true, false, stageNo, "user4.mail@test.com", false, "example_code");
+
+		urepository.save(userAdmin);
+		urepository.save(user1);
+		urepository.save(user2);
+		urepository.save(user3);
+		urepository.save(user4);
+
 		// Create the login request body
 		LoginForm loginForm = new LoginForm("admin", "asas2233");
 		String requestBody = objectMapper.writeValueAsString(loginForm);
@@ -78,7 +102,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(1)
+	@Rollback
 	public void testMakeAllCompetitorsAllVerifiedAreCompetitorsCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/makeallcompetitors";
 
@@ -87,7 +111,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(2)
+	@Rollback
 	public void testGetUsersForAdminAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/users";
 
@@ -98,7 +122,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(3)
+	@Rollback
 	public void testGetStagesForAdminAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/stages";
 
@@ -106,10 +130,18 @@ public class RestAdminControllerTest {
 		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
 				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(1))
 				.andExpect(MockMvcResultMatchers.jsonPath("$[0].stage").value("No"));
+
+		Stage stageSemiFinal = new Stage("1/2");
+		srepository.save(stageSemiFinal);
+
+		// Good case 2:
+		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$[1].stage").value("1/2"));
 	}
 
 	@Test
-	@Order(4)
+	@Rollback
 	public void testGetRoundsBracketNotMadeCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/rounds";
 		// bracket wasn't made yet case:
@@ -117,7 +149,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(5)
+	@Rollback
 	public void testMakeBracketGoodCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/makebracket";
 
@@ -146,26 +178,37 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(6)
+	@Rollback
 	public void testMakeBracketAlreadyMadeCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/makebracket";
 
+		// Making bracket first:
+		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		// Case bracket was already made:
 		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isNotAcceptable());
 	}
 
 	@Test
-	@Order(7)
+	@Rollback
 	public void testMakeAllCompetitorsBracketMadeCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/makeallcompetitors";
+		this.verifyUser4();
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		// Trying to makeAll competitors when the bracket was already made case
 		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isNotAcceptable());
 	}
 
 	@Test
-	@Order(8)
+	@Rollback
 	public void testGetRoundsGoodCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/rounds";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
 				.andExpect(MockMvcResultMatchers.jsonPath("$.allRounds.size()").value(3))
@@ -174,34 +217,29 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(9)
+	@Rollback
 	public void testSetResultNotAllPlayedCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/confirmresults";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		// Trying to confirm stage results when not all of the rounds are played case:
 		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isNotAcceptable());
 	}
 
 	@Test
-	@Order(10)
+	@Rollback
 	public void testSetResultGoodCase() throws Exception {
-		String requestURI = END_POINT_PATH + "/setresult/";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		this.setResultForSemiFinalRound1();
 
 		List<Round> allRounds = rrepository.findAll();
-		Round roundToSetResult = allRounds.get(0);
-		User roundWinner = roundToSetResult.getUser1();
-		roundToSetResult.setResult(roundWinner.getUsername() + " win");
-
-		String finalRequestUri = requestURI + roundToSetResult.getRoundid();
-
-		String requestBody = objectMapper.writeValueAsString(roundToSetResult);
-
-		mockMvc.perform(put(finalRequestUri).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody)).andExpect(status().isOk());
-
-		allRounds = rrepository.findAll();
-		roundToSetResult = allRounds.get(0);
-		assertThat(roundToSetResult.getResult()).isNotEqualTo("No");
+		Round updatedRound = allRounds.get(0);
+		assertThat(updatedRound.getResult()).isNotEqualTo("No");
 
 		List<User> allCompetitors = urepository.findAllCompetitors();
 		boolean allCompetitorsIn = true;
@@ -215,9 +253,12 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(11)
+	@Rollback
 	public void testSetResultNotCurrentStageCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/setresult/";
+
+		// Making bracket first: (current stage is 1/2)
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		// trying to set result for round out of current stage case:
 		Round finalRound = rrepository.findFinal();
@@ -236,9 +277,12 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(12)
+	@Rollback
 	public void testSetResultIdMissmatchCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/setresult/";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		List<Round> allRounds = rrepository.findAll();
 		Round roundToSetResult = allRounds.get(0);
@@ -253,9 +297,12 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(13)
+	@Rollback
 	public void testSetResultAutoHandledRoundCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/setresult/";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		List<Round> allRounds = rrepository.findAll();
 		Round roundToSetResult = allRounds.get(1);
@@ -273,9 +320,14 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(14)
+	@Rollback
 	public void testConfirmResultsGoodCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/confirmresults";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		this.setResultForSemiFinalRound1();
 
 		// Good case of confirming 1/2 stage:
 		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
@@ -307,9 +359,12 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(15)
+	@Rollback
 	public void testDeleteUserTryingToDeleteCompetitorAndBracketMadeCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/deleteuser/";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		// Trying to delete competitor when bracket was already made:
 		User competitor1 = urepository.findByUsername("user1");
@@ -322,9 +377,12 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(16)
-	public void testResetAll() throws Exception {
+	@Rollback
+	public void testResetAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/reset";
+
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		// Good case :
 		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk());
@@ -346,9 +404,14 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(17)
+	@Rollback
 	public void testMakeAllCompetitorsGoodCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/makeallcompetitors";
+		// Making bracket first:
+		mockMvc.perform(put(MAKE_BRACKET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		// Then resetting everything:
+		mockMvc.perform(put(RESET_END_POINT).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		List<User> allCompetitors = urepository.findAllCompetitors();
 		assertThat(allCompetitors).hasSize(0);
@@ -364,7 +427,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(18)
+	@Rollback
 	public void testDeleteUserNotFoundCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/deleteuser/";
 
@@ -376,7 +439,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(19)
+	@Rollback
 	public void testDeleteUserTryingToDeleteAdminCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/deleteuser/";
 
@@ -390,7 +453,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(20)
+	@Rollback
 	public void testDeleteUserGoodCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/deleteuser/";
 
@@ -407,16 +470,22 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(21)
+	@Rollback
 	public void testMakeBracketLessThan3CompetitorsCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/makebracket";
+
+		// Let's delete one user first, so there will be only 2 competitors;
+		User userToDelete = urepository.findByUsername("user1");
+		Long userToDeleteId = userToDelete.getId();
+		String requestURIToDelete = DELETE_END_POINT + userToDeleteId;
+		mockMvc.perform(delete(requestURIToDelete).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		// Trying to makeBracket with less than 3 competitors case:
 		mockMvc.perform(put(requestURI).header("Authorization", jwtToken)).andExpect(status().isNotAcceptable());
 	}
-	
+
 	@Test
-	@Order(22)
+	@Rollback
 	public void testUpdateUserByAdminAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/updateuser/";
 
@@ -424,7 +493,7 @@ public class RestAdminControllerTest {
 		User user2 = urepository.findByUsername("user2");
 		assertThat(user2.getEmail()).isNotEqualTo("new@mail.com");
 		assertThat(user2.getRole()).isNotEqualTo("ADMIN");
-		
+
 		user2.setEmail("new@mail.com");
 		user2.setRole("ADMIN");
 		String requestBody = objectMapper.writeValueAsString(user2);
@@ -436,7 +505,9 @@ public class RestAdminControllerTest {
 				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isBadRequest());
 
 		// User id in path and in request body missmatch case:
-		String requestURIIdMissmatch = requestURI + "1";
+		User wrongUser = urepository.findByUsername("user1");
+		Long wrongId = wrongUser.getId();
+		String requestURIIdMissmatch = requestURI + wrongId;
 
 		mockMvc.perform(put(requestURIIdMissmatch).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isConflict());
@@ -454,7 +525,7 @@ public class RestAdminControllerTest {
 	}
 
 	@Test
-	@Order(23)
+	@Rollback
 	public void testAddNewUserByAdminAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/adduser";
 
@@ -498,6 +569,46 @@ public class RestAdminControllerTest {
 		 */
 	}
 
+	private Stage resetStageUserAndRoundRepos() {
+		rrepository.deleteAll();
+		urepository.deleteAll();
+		srepository.deleteAll();
 
+		List<Stage> allStages = srepository.findAll();
+		assertThat(allStages).hasSize(0);
+
+		List<Round> allRounds = rrepository.findAll();
+		assertThat(allRounds).hasSize(0);
+
+		List<User> allUsers = urepository.findAll();
+		assertThat(allUsers).hasSize(0);
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+
+		return stageNo;
+	}
+
+	private void verifyUser4() {
+		User user4 = urepository.findByUsername("unverified");
+		user4.setAccountVerified(true);
+		urepository.save(user4);
+	}
+
+	private void setResultForSemiFinalRound1() throws Exception {
+		String requestURI = END_POINT_PATH + "/setresult/";
+
+		List<Round> allRounds = rrepository.findAll();
+		Round roundToSetResult = allRounds.get(0);
+		User roundWinner = roundToSetResult.getUser1();
+		roundToSetResult.setResult(roundWinner.getUsername() + " win");
+
+		String finalRequestUri = requestURI + roundToSetResult.getRoundid();
+
+		String requestBody = objectMapper.writeValueAsString(roundToSetResult);
+
+		mockMvc.perform(put(finalRequestUri).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody)).andExpect(status().isOk());
+	}
 
 }

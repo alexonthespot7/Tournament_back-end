@@ -2,16 +2,14 @@ package com.myproject.tournamentapp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -27,6 +25,8 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
+import jakarta.transaction.Transactional;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -34,10 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Transactional
 public class RestUserControllerTest {
 	private static final String END_POINT_PATH = "/api";
 
@@ -58,7 +58,7 @@ public class RestUserControllerTest {
 	@Autowired
 	private RoundRepository rrepository;
 
-	@BeforeEach
+	@BeforeAll
 	public void loginAndRetrieveToken() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";
 		Stage stageNo = this.resetStageUserAndRoundRepos();
@@ -96,7 +96,7 @@ public class RestUserControllerTest {
 	}
 
 	@Test
-	@Order(1)
+	@Rollback
 	public void testGetCompetitors() throws Exception {
 		String requestURI = END_POINT_PATH + "/competitors";
 
@@ -108,25 +108,34 @@ public class RestUserControllerTest {
 	}
 
 	@Test
-	@Order(2)
-	public void testGetPersonalInfoById() throws Exception {
+	@Rollback
+	public void testGetPersonalInfoByIdWrongIdCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/competitors/";
 
 		User user1 = urepository.findByUsername("user1");
 		Long user1Id = user1.getId();
+
 		// wrong userid in path case:
 		String requestURIWrongId = requestURI + user1Id + "1";
 		mockMvc.perform(get(requestURIWrongId).header("Authorization", jwtToken)).andExpect(status().isForbidden());
+	}
+
+	@Test
+	@Rollback
+	public void testGetPersonalInfoByIdGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/competitors/";
+
+		User user1 = urepository.findByUsername("user1");
 
 		// good request case:
-		String requestURIGood = requestURI + user1Id;
+		String requestURIGood = requestURI + user1.getId();
 		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
 				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"));
 	}
 
 	// test the method to update participants status;
 	@Test
-	@Order(3)
+	@Rollback
 	public void testUpdateUser() throws Exception {
 		String requestURI = END_POINT_PATH + "/updateuser/";
 
@@ -156,7 +165,7 @@ public class RestUserControllerTest {
 	}
 
 	@Test
-	@Order(4)
+	@Rollback
 	public void testGetPublicInfoOfAllRounds() throws Exception {
 		String requestURI = END_POINT_PATH + "/rounds";
 
@@ -174,15 +183,13 @@ public class RestUserControllerTest {
 	}
 
 	@Test
-	@Order(5)
+	@Rollback
 	public void testGetBracketInfo() throws Exception {
 		String requestURI = END_POINT_PATH + "/bracket";
 
 		// bracket wasn't made yet case:
 		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isAccepted());
 
-		
-		
 		// good case (first let's add some rounds to repo first):
 		this.createBracketDraft();
 
@@ -194,7 +201,7 @@ public class RestUserControllerTest {
 	}
 
 	@Test
-	@Order(6)
+	@Rollback
 	public void testCahngePassword() throws Exception {
 		String requestURI = END_POINT_PATH + "/changepassword";
 
@@ -224,15 +231,22 @@ public class RestUserControllerTest {
 		rrepository.deleteAll();
 		urepository.deleteAll();
 		srepository.deleteAll();
-		List<Stage> stageNullNo = srepository.findByStage("No");
-		assertThat(stageNullNo).hasSize(0);
+
+		List<Stage> allStages = srepository.findAll();
+		assertThat(allStages).hasSize(0);
+
+		List<Round> allRounds = rrepository.findAll();
+		assertThat(allRounds).hasSize(0);
+
+		List<User> allUsers = urepository.findAll();
+		assertThat(allUsers).hasSize(0);
 
 		Stage stageNo = new Stage("No", true);
 		srepository.save(stageNo);
 
 		return stageNo;
 	}
-	
+
 	private void createBracketDraft() {
 		Stage stageSemiFinal = new Stage("1/2", true);
 		Stage stageFinal = new Stage("final");

@@ -4,34 +4,31 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.myproject.tournamentapp.model.Stage;
 import com.myproject.tournamentapp.model.StageRepository;
 
+import jakarta.transaction.Transactional;
+
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
+@TestInstance(Lifecycle.PER_CLASS)
+@Transactional
 public class StageRepositoryTests {
 	@Autowired
 	private StageRepository srepository;
-
-	// Test Create Functionality for stage repository
-	@Test
-	public void testCreationStage() {
-		srepository.deleteAll(); // deleting all hard-coded stages
-
-		Stage stage = new Stage("1/4", true);
-		srepository.save(stage);
-		assertThat(stage.getStageid()).isNotNull();
-	}
-
-	// Test findAll functions of stage repository:
-	@Test
-	public void testfindAll() {
+	
+	@BeforeAll
+	public void resetStageRepo() {
 		srepository.deleteAll(); // deleting all hard-coded stages
 
 		List<Stage> stagesEmpty = srepository.findAll();
@@ -39,21 +36,30 @@ public class StageRepositoryTests {
 
 		Stage stageNo = new Stage("No", true);
 		srepository.save(stageNo);
+	}
+
+	// Test Create Functionality for stage repository
+	@Test
+	@Rollback
+	public void testCreationStage() {
+		Stage stage = new Stage("1/4", true);
+		srepository.save(stage);
+		assertThat(stage.getStageid()).isNotNull();
+	}
+
+	// Test findAll functions of stage repository:
+	@Test
+	@Rollback
+	public void testfindAll() {
 		List<Stage> stages = srepository.findAll();
 		assertThat(stages).hasSize(1);
 	}
 
 	// Test findAllStages functions of stage repository: find all except 'no' stage
 	@Test
+	@Rollback
 	public void testFindAllStages() {
-		srepository.deleteAll(); // deleting all hard-coded stages
-
-		List<Stage> allStagesEmpty = srepository.findAllStages();
-		assertThat(allStagesEmpty).isEmpty();
-
-		Stage stageNo = new Stage("No", true);
 		Stage stageFinal = new Stage("final", false);
-		srepository.save(stageNo);
 		srepository.save(stageFinal);
 		List<Stage> stagesExceptNo = srepository.findAllStages();
 		assertThat(stagesExceptNo).hasSize(1);
@@ -61,15 +67,9 @@ public class StageRepositoryTests {
 
 	// Test findCurrentStage functions of stage repository:
 	@Test
+	@Rollback
 	public void testFindCurrentStage() {
-		srepository.deleteAll(); // deleting all hard-coded stages
-
-		Stage currentStageNotFound = srepository.findCurrentStage();
-		assertThat(currentStageNotFound).isNull();
-
-		Stage stageNo = new Stage("No", true);
 		Stage stageFinal = new Stage("final", false);
-		srepository.save(stageNo);
 		srepository.save(stageFinal);
 		Stage currentStage = srepository.findCurrentStage();
 		assertThat(currentStage).isNotNull();
@@ -78,13 +78,10 @@ public class StageRepositoryTests {
 
 	// Test stage update functionality:
 	@Test
+	@Rollback
 	public void testUpdateStage() {
-		srepository.deleteAll(); // deleting all hard-coded stages
-		List<Stage> stageNullNo = srepository.findByStage("No");
-		assertThat(stageNullNo).hasSize(0);
-		
-		Stage stageNo = new Stage("No", true);
-		srepository.save(stageNo);
+		Stage stageNo = srepository.findCurrentStage();
+
 		assertThat(stageNo.getIsCurrent()).isTrue();
 
 		stageNo.setIsCurrent(false);
@@ -99,16 +96,12 @@ public class StageRepositoryTests {
 
 	// Test delete functionality for stage repository
 	@Test
+	@Rollback
 	public void testDeletionStage() {
-		srepository.deleteAll(); // deleting all hard-coded stages
+		Stage stageNo = srepository.findCurrentStage();
 
-		List<Stage> stagesEmpty = srepository.findAll();
-		assertThat(stagesEmpty).isEmpty();
-
-		Stage stageNo = new Stage("No", true);
-		srepository.save(stageNo);
 		srepository.delete(stageNo);
-		stagesEmpty = srepository.findByStage("No");
+		List<Stage> stagesEmpty = srepository.findByStage("No");
 		assertThat(stagesEmpty).hasSize(0);
 
 		stageNo = new Stage("No", true);

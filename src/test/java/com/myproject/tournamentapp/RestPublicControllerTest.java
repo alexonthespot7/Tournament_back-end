@@ -1,11 +1,14 @@
 package com.myproject.tournamentapp;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +22,8 @@ import com.myproject.tournamentapp.model.Stage;
 import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
+
+import jakarta.transaction.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,6 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestInstance(Lifecycle.PER_CLASS)
+@Transactional
 public class RestPublicControllerTest {
 	private static final String END_POINT_PATH = "/api";
 
@@ -52,23 +59,31 @@ public class RestPublicControllerTest {
 
 	@Autowired
 	private RoundRepository rrepository;
-	
-	@BeforeEach
+
+	@BeforeAll
 	public void resetRepos() throws Exception {
 		rrepository.deleteAll();
 		urepository.deleteAll();
 		srepository.deleteAll();
-		List<Stage> stageNullNo = srepository.findByStage("No");
-		assertThat(stageNullNo).hasSize(0);
+
+		List<Stage> allStages = srepository.findAll();
+		assertThat(allStages).hasSize(0);
+
+		List<Round> allRounds = rrepository.findAll();
+		assertThat(allRounds).hasSize(0);
+
+		List<User> allUsers = urepository.findAll();
+		assertThat(allUsers).hasSize(0);
 
 		Stage stageNo = new Stage("No", true);
 		srepository.save(stageNo);
 	}
 
 	@Test
+	@Rollback 
 	public void testGetRoundsQuantityMethod() throws Exception {
 		String requestURI = END_POINT_PATH + "/roundsquantity";
-		
+
 		Stage stageNo = srepository.findCurrentStage();
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string("0"));
@@ -82,9 +97,10 @@ public class RestPublicControllerTest {
 	}
 
 	@Test
+	@Rollback 
 	public void testLogin() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";
-		
+
 		Stage stageNo = srepository.findCurrentStage();
 
 		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
@@ -121,17 +137,19 @@ public class RestPublicControllerTest {
 		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyGood))
 				.andExpect(status().isOk()).andExpect(header().exists("Authorization"))
 				.andExpect(header().string("Authorization", Matchers.containsString("Bearer")))
-				.andExpect(header().exists("Host")).andExpect(header().string("Host", Matchers.equalTo(user1Id.toString())))
+				.andExpect(header().exists("Host"))
+				.andExpect(header().string("Host", Matchers.equalTo(user1Id.toString())))
 				.andExpect(header().exists("Origin")).andExpect(header().string("Origin", Matchers.equalTo("user1")))
 				.andExpect(header().exists("Allow")).andExpect(header().string("Allow", Matchers.equalTo("USER")));
 	}
 
 	@Test
+	@Rollback
 	public void testSignup() throws Exception {
 		String requestURI = END_POINT_PATH + "/signup";
-		
+
 		Stage stageNo = srepository.findCurrentStage();
-		
+
 		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
 				true, stageNo, "user1.mail@test.com", true, null);
 		urepository.save(user1);
@@ -165,15 +183,16 @@ public class RestPublicControllerTest {
 	}
 
 	@Test
+	@Rollback 
 	public void testVerify() throws Exception {
 		String requestURI = END_POINT_PATH + "/verify";
-		
+
 		Stage stageNo = srepository.findCurrentStage();
 
 		User unverified = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
 				false, true, stageNo, "user4.mail@test.com", false, "example_code");
 		urepository.save(unverified);
-		
+
 		// User not found by verification code case
 		VerificationCodeForm verificationFormUserNotFound = new VerificationCodeForm("wrong_code");
 		String requestBodyUserNotFound = objectMapper.writeValueAsString(verificationFormUserNotFound);
@@ -190,19 +209,20 @@ public class RestPublicControllerTest {
 	}
 
 	@Test
+	@Rollback 
 	public void testResetPassword() throws Exception {
 		String requestURI = END_POINT_PATH + "/resetpassword";
-		
+
 		Stage stageNo = srepository.findCurrentStage();
-		
+
 		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
 				true, stageNo, "user1.mail@test.com", true, null);
 		urepository.save(user1);
-		
+
 		User unverified = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
 				false, true, stageNo, "user4.mail@test.com", false, "example_code");
 		urepository.save(unverified);
-		
+
 		// User not found by email case
 		EmailForm emailFormUserNotFound = new EmailForm("wrong@email.com");
 		String requestBodyUserNotFound = objectMapper.writeValueAsString(emailFormUserNotFound);

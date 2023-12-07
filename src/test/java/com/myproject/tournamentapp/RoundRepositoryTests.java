@@ -4,10 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.myproject.tournamentapp.model.Round;
@@ -15,8 +19,12 @@ import com.myproject.tournamentapp.model.RoundRepository;
 import com.myproject.tournamentapp.model.Stage;
 import com.myproject.tournamentapp.model.StageRepository;
 
+import jakarta.transaction.Transactional;
+
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
+@TestInstance(Lifecycle.PER_CLASS)
+@Transactional
 public class RoundRepositoryTests {
 	@Autowired
 	private RoundRepository rrepository;
@@ -24,10 +32,26 @@ public class RoundRepositoryTests {
 	@Autowired
 	private StageRepository srepository;
 
+	@BeforeAll
+	public void resetStageAndRoundRepos() {
+		rrepository.deleteAll(); // deleting all hard-coded rounds
+		srepository.deleteAll();
+
+		List<Stage> allStages = srepository.findAll();
+		assertThat(allStages).hasSize(0);
+
+		List<Round> allRounds = rrepository.findAll();
+		assertThat(allRounds).hasSize(0);
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+	}
+
 	// creation functionality checking for the round repo
 	@Test
+	@Rollback
 	public void creationTestsRounds() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		Round round = new Round("No", stageNo);
 
@@ -37,8 +61,9 @@ public class RoundRepositoryTests {
 
 	// check round repository findAll function
 	@Test
+	@Rollback
 	public void testFindAllRounds() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<Round> allRounds = rrepository.findAll();
 		assertThat(allRounds).hasSize(0);
@@ -56,8 +81,9 @@ public class RoundRepositoryTests {
 	// reading rounds that either were already played or the rounds of the current
 	// stage
 	@Test
+	@Rollback
 	public void testFindAllCurrentAndPlayedRounds() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<Round> allCurrentAndPlayedRounds = rrepository.findAllCurrentAndPlayed();
 		assertThat(allCurrentAndPlayedRounds).hasSize(0);
@@ -83,8 +109,9 @@ public class RoundRepositoryTests {
 
 	// Test find round by id functionality:
 	@Test
+	@Rollback
 	public void testFindRoundById() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		Round round = rrepository.findRoundById(Long.valueOf(1));
 		assertThat(round).isNull();
@@ -99,8 +126,9 @@ public class RoundRepositoryTests {
 	// Test findCurrentRounds functionality: searches for the rounds in current
 	// stage;
 	@Test
+	@Rollback
 	public void testFindCurrentRounds() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<Round> currentRoundsNotFound = rrepository.findCurrentRounds();
 		assertThat(currentRoundsNotFound).hasSize(0);
@@ -116,8 +144,9 @@ public class RoundRepositoryTests {
 
 	// Test findRoundsByStage functionality:
 	@Test
+	@Rollback
 	public void testFindRoundsByStage() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<Round> roundsByStageNotFound = rrepository.findRoundsByStage(stageNo.getStageid());
 		assertThat(roundsByStageNotFound).hasSize(0);
@@ -133,8 +162,9 @@ public class RoundRepositoryTests {
 
 	// Test findQuantityOfGamesInCurrentStage functionality:
 	@Test
+	@Rollback
 	public void testFindQuantityOfGamesInCurrentStage() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		int quantityOfGamesInCurrentStageZero = rrepository.findQuantityOfGamesInCurrentStage();
 		assertThat(quantityOfGamesInCurrentStageZero).isEqualTo(0);
@@ -150,8 +180,9 @@ public class RoundRepositoryTests {
 
 	// Test quantityOfPlayedInCurrentStage functionality:
 	@Test
+	@Rollback
 	public void testQuantityOfPlayedInCurrentStage() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		int quantityOfPlayedInCurrentStageZero = rrepository.quantityOfPlayedInCurrentStage();
 		assertThat(quantityOfPlayedInCurrentStageZero).isEqualTo(0);
@@ -167,9 +198,8 @@ public class RoundRepositoryTests {
 
 	// Test findFinal functionality:
 	@Test
+	@Rollback
 	public void testFindFinal() {
-		this.resetStageAndRoundRepos();
-
 		Round finalNotFound = rrepository.findFinal();
 		assertThat(finalNotFound).isNull();
 
@@ -184,8 +214,9 @@ public class RoundRepositoryTests {
 
 	// Test update functionality:
 	@Test
+	@Rollback
 	public void testUpdateRound() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		Round round = new Round("No", stageNo);
 		rrepository.save(round);
@@ -202,8 +233,10 @@ public class RoundRepositoryTests {
 
 	// Test delete functionality for round repo:
 	@Test
+	@Rollback
 	public void testDeleteRound() {
-		Stage stageNo = this.resetStageAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
+
 		Round round1 = new Round("No", stageNo);
 		Round round2 = new Round("No", stageNo);
 
@@ -220,17 +253,5 @@ public class RoundRepositoryTests {
 		Round round = rrepository.findRoundsByStage(stageNo.getStageid()).get(0);
 		rrepository.delete(round);
 		assertThat(rrepository.findAll()).isEmpty();
-	}
-
-	private Stage resetStageAndRoundRepos() {
-		rrepository.deleteAll(); // deleting all hard-coded rounds
-		srepository.deleteAll();
-		List<Stage> stageNullNo = srepository.findByStage("No");
-		assertThat(stageNullNo).hasSize(0);
-
-		Stage stageNo = new Stage("No", true);
-		srepository.save(stageNo);
-
-		return stageNo;
 	}
 }

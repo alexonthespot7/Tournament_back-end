@@ -4,10 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.myproject.tournamentapp.model.Stage;
@@ -15,8 +19,12 @@ import com.myproject.tournamentapp.model.StageRepository;
 import com.myproject.tournamentapp.model.User;
 import com.myproject.tournamentapp.model.UserRepository;
 
+import jakarta.transaction.Transactional;
+
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
+@TestInstance(Lifecycle.PER_CLASS)
+@Transactional
 public class UserRepositoryTests {
 	@Autowired
 	private UserRepository urepository;
@@ -24,10 +32,26 @@ public class UserRepositoryTests {
 	@Autowired
 	private StageRepository srepository;
 
+	@BeforeAll
+	public void resetStageAndUserRepos() {
+		urepository.deleteAll(); // deleting all hardcoded users
+		srepository.deleteAll();
+
+		List<Stage> allStages = srepository.findAll();
+		assertThat(allStages).hasSize(0);
+
+		List<User> allUsers = urepository.findAll();
+		assertThat(allUsers).hasSize(0);
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+	}
+
 	// test Create for User repo:
 	@Test
+	@Rollback
 	public void testUserCreation() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		User user = new User("usersdso", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", true,
 				false, stageNo, "test1@gmail.com", true, null);
@@ -40,8 +64,9 @@ public class UserRepositoryTests {
 
 	// Test find by username
 	@Test
+	@Rollback
 	public void testFindByUsername() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		String username = "usero";
 
@@ -58,8 +83,9 @@ public class UserRepositoryTests {
 
 	// Test findAllAdmins functionality:
 	@Test
+	@Rollback
 	public void testFindAllAdmins() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<User> allAdminsEmpty = urepository.findAllAdmins();
 		assertThat(allAdminsEmpty).hasSize(0);
@@ -74,8 +100,9 @@ public class UserRepositoryTests {
 
 	// Test findAllVerifiedUsers:
 	@Test
+	@Rollback
 	public void testFindAllVerifiedUsers() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<User> allVerifiedUsersEmpty = urepository.findAllVerifiedUsers();
 		assertThat(allVerifiedUsersEmpty).hasSize(0);
@@ -96,8 +123,9 @@ public class UserRepositoryTests {
 
 	// Test findAllCompetitors:
 	@Test
+	@Rollback
 	public void testFindAllCompetitors() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<User> allCompetitorsEmpty = urepository.findAllCompetitors();
 		assertThat(allCompetitorsEmpty).hasSize(0);
@@ -122,8 +150,9 @@ public class UserRepositoryTests {
 
 	// test findAll functionality:
 	@Test
+	@Rollback
 	public void testFindAll() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<User> allUsersEmpty = urepository.findAll();
 		assertThat(allUsersEmpty).hasSize(0);
@@ -148,8 +177,9 @@ public class UserRepositoryTests {
 
 	// test findAllCurrentCompetitors
 	@Test
+	@Rollback
 	public void testFindAllCurrentCompetitors() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		List<User> allCurrentCompetitorsEmpty = urepository.findAllCurrentCompetitors();
 		assertThat(allCurrentCompetitorsEmpty).hasSize(0);
@@ -177,8 +207,9 @@ public class UserRepositoryTests {
 
 	// Test findByVerificationCode:
 	@Test
+	@Rollback
 	public void testFindByVerificationCode() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		String verificationCode = "TestCode";
 
@@ -195,8 +226,9 @@ public class UserRepositoryTests {
 
 	// Test findByEmail:
 	@Test
+	@Rollback
 	public void testFindByEmail() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		String email = "test@mail.com";
 		User userNull = urepository.findByEmail(email);
@@ -212,8 +244,9 @@ public class UserRepositoryTests {
 
 	// Test update user functionality:
 	@Test
+	@Rollback
 	public void testUpdateUser() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		String username = "usero";
 		String email = "mail@test.com";
@@ -256,8 +289,10 @@ public class UserRepositoryTests {
 
 	// Test delete functionalities:
 	@Test
+	@Rollback
 	public void testDeleteUser() {
-		Stage stageNo = this.resetStageAndUserRepos();
+		Stage stageNo = srepository.findCurrentStage();
+
 		User user1 = new User("usero1", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", true,
 				false, stageNo, "test1@gmail.com", true, null);
 		User user2 = new User("usero2", "$2a$06$3jYRJrg0ghaaypjZ/.g4SethoeA51ph3UD4kZi9oPkeMTpjKU5uo6", "USER", true,
@@ -275,17 +310,5 @@ public class UserRepositoryTests {
 		urepository.delete(newUser);
 		usersEmpty = urepository.findAll();
 		assertThat(usersEmpty).hasSize(0);
-	}
-
-	private Stage resetStageAndUserRepos() {
-		urepository.deleteAll(); // deleting all hardcoded users
-		srepository.deleteAll();
-		List<Stage> stageNullNo = srepository.findByStage("No");
-		assertThat(stageNullNo).hasSize(0);
-
-		Stage stageNo = new Stage("No", true);
-		srepository.save(stageNo);
-
-		return stageNo;
 	}
 }
