@@ -1,5 +1,6 @@
 package com.myproject.tournamentapp;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -51,11 +52,24 @@ public class RestPublicControllerTest {
 
 	@Autowired
 	private RoundRepository rrepository;
+	
+	@BeforeEach
+	public void resetRepos() throws Exception {
+		rrepository.deleteAll();
+		urepository.deleteAll();
+		srepository.deleteAll();
+		List<Stage> stageNullNo = srepository.findByStage("No");
+		assertThat(stageNullNo).hasSize(0);
+
+		Stage stageNo = new Stage("No", true);
+		srepository.save(stageNo);
+	}
 
 	@Test
 	public void testGetRoundsQuantityMethod() throws Exception {
 		String requestURI = END_POINT_PATH + "/roundsquantity";
-		Stage stageNo = this.resetStageUserAndRoundRepos();
+		
+		Stage stageNo = srepository.findCurrentStage();
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk()).andExpect(content().string("0"));
 
@@ -70,7 +84,8 @@ public class RestPublicControllerTest {
 	@Test
 	public void testLogin() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";
-		Stage stageNo = this.resetStageUserAndRoundRepos();
+		
+		Stage stageNo = srepository.findCurrentStage();
 
 		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
 				true, stageNo, "user1.mail@test.com", true, null);
@@ -114,7 +129,8 @@ public class RestPublicControllerTest {
 	@Test
 	public void testSignup() throws Exception {
 		String requestURI = END_POINT_PATH + "/signup";
-		Stage stageNo = this.resetStageUserAndRoundRepos();
+		
+		Stage stageNo = srepository.findCurrentStage();
 		
 		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
 				true, stageNo, "user1.mail@test.com", true, null);
@@ -152,7 +168,7 @@ public class RestPublicControllerTest {
 	public void testVerify() throws Exception {
 		String requestURI = END_POINT_PATH + "/verify";
 		
-		Stage stageNo = this.resetStageUserAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 
 		User unverified = new User("unverified", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER",
 				false, true, stageNo, "user4.mail@test.com", false, "example_code");
@@ -177,7 +193,7 @@ public class RestPublicControllerTest {
 	public void testResetPassword() throws Exception {
 		String requestURI = END_POINT_PATH + "/resetpassword";
 		
-		Stage stageNo = this.resetStageUserAndRoundRepos();
+		Stage stageNo = srepository.findCurrentStage();
 		
 		User user1 = new User("user1", "$2a$12$0Mu/91y.kvDE7rj0ZXrWkOxUISfqEuQcXyU.luDJIe7DW2W/eqUYq", "USER", false,
 				true, stageNo, "user1.mail@test.com", true, null);
@@ -209,18 +225,5 @@ public class RestPublicControllerTest {
 		 * mockMvc.perform(put(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyGood))
 		 * .andExpect(status().isOk());
 		 */
-	}
-
-	private Stage resetStageUserAndRoundRepos() {
-		rrepository.deleteAll();
-		urepository.deleteAll();
-		srepository.deleteAll();
-		List<Stage> stageNullNo = srepository.findByStage("No");
-		assertThat(stageNullNo).hasSize(0);
-
-		Stage stageNo = new Stage("No", true);
-		srepository.save(stageNo);
-
-		return stageNo;
 	}
 }
