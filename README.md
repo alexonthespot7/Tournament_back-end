@@ -5,7 +5,7 @@
 > The initial version of front-end side for this app was made with thymeleaf and can be found in [thymeleaf_version branch](https://github.com/alexonthespot7/Tournament_back-end/tree/thymeleaf_version)<br>
 > The production version is under [production branch](https://github.com/alexonthespot7/Tournament_back-end/tree/production)<br><br>
 >
-> The deployed application can be found [here](https://tournament-back-end.onrender.com)
+> The deployed application can be found [here](https://tournament-back-end.onrender.com). The response speed is quite low, as the free instance is used.
 
 ## Table of Contents
 * [Usage Guide](#usage-guide)
@@ -72,7 +72,9 @@
 - **springdoc-openapi-starter-webmvc-ui**: Starter for adding OpenAPI 3 documentation and Swagger UI support to your Spring Boot application.
 
 ## Documentation
-The documentation for this project is made with Swagger and can be accessed after launching the project at the following endpoint: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+The documentation for this project is made with Swagger and can be accessed after launching the project at the following endpoints: 
+1. [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html): if you're running the app on your pc.
+2. [https://tournament-back-end.onrender.com/swagger-ui.html](https://tournament-back-end.onrender.com/swagger-ui.html): deployed app.
 
 ## Testing
 ### Usage Guide
