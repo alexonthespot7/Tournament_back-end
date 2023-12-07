@@ -2,7 +2,7 @@
 > This Java Spring Boot application serves as the server-side component for a comprehensive tournament management system.<br>
 > It provides a robust backend infrastructure to support various functionalities for users and administrators.<br>
 > The front-end side of this project is available [here](https://github.com/alexonthespot7/Tournament_front-end)<br>
-> The initial version of front-end side for this app was made with thymeleaf and can be found in [thymeleaf_version branch](https://github.com/alexonthespot7/Tournament_back-end/tree/thymeleaf_version)
+> The initial version of front-end side for this app was made with thymeleaf and can be found in [thymeleaf_version branch](https://github.com/alexonthespot7/Tournament_back-end/tree/thymeleaf_version)<br>
 > The production version is under [production branch](https://github.com/alexonthespot7/Tournament_back-end/tree/production)<br><br>
 >
 > The deployed application can be found [here](https://tournament-back-end.onrender.com)
