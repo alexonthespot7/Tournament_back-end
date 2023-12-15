@@ -50,7 +50,8 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/competitors", "/api/competitors/*", "/api/rounds",
 								"/api/bracket")
 						.authenticated().requestMatchers(HttpMethod.PUT, "/api/updateuser/*", "/api/changepassword")
-						.authenticated().anyRequest().hasAuthority("ADMIN"))
+						.authenticated().requestMatchers("/error/**").permitAll()
+						.anyRequest().hasAuthority("ADMIN"))
 				.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
 				.exceptionHandling((exceptionHandling) -> exceptionHandling.authenticationEntryPoint(exceptionHandler));
 
