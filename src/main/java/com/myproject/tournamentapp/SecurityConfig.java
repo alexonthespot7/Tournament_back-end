@@ -44,6 +44,7 @@ public class SecurityConfig {
 						(sessionManagement) -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
 						.requestMatchers(SWAGGER_PATHS).permitAll()
+						.requestMatchers("/error/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/roundsquantity").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/login", "/api/signup").permitAll()
 						.requestMatchers(HttpMethod.PUT, "/api/verify", "/api/resetpassword").permitAll()
