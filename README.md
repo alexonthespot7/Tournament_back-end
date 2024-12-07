@@ -1,11 +1,9 @@
 # Tournament_back-end
 > This Java Spring Boot application serves as the server-side component for a comprehensive tournament management system.<br>
 > It provides a robust backend infrastructure to support various functionalities for users and administrators.<br>
-> The front-end side of this project is available [here](https://github.com/alexonthespot7/Tournament_front-end)<br>
 >
-> The deployed back-end side of the application can be found [here](https://tournament-back-end.onrender.com). The response speed is quite low, as the free instance is used.<br>
-> <br>
-> Fully deployed app with client- and server-side: [https://tournament-axos.netlify.app](https://tournament-axos.netlify.app/)
+> The front-end side of this project is available [here](https://github.com/alexonthespot7/Tournament_front-end)<br>
+
 
 ## Table of Contents
 * [Usage Guide](#usage-guide)
